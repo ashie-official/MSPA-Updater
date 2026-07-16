@@ -1,0 +1,38 @@
+{
+    "manifest_version": 3,
+    "name": "MSPA Updater",
+    "version": "0.0.1",
+    "description": "Browser extension for rereading MS Paint Adventures in lockstep with the original updates. The link to the next page only becomes visible if the time you've spent rereading exceeds the original time it took for the update to release.",
+    
+    "permissions": [
+        "storage"
+    ],
+    "host_permissions": [
+        "https://*.homestuck.com/*",
+        "https://www.homestuck.com/*"
+    ],
+    "background": {
+        "scripts": ["background.js"],
+        "service_worker": "background.js",
+        "type": "module"
+    },
+    "browser_specific_settings": {
+        "gecko": {
+        "id": "mspa-lockstep@yourdomain.com"
+        }
+    },
+    "content_scripts": [
+        {
+        "matches": [
+            "https://*.homestuck.com/story/*",
+            "https://www.homestuck.com/story/*"
+        ],
+        "js": ["content.js"],
+        "run_at": "document_start"
+        }
+    ],
+    "options_ui": {
+        "page": "options.html",
+        "open_in_tab": true
+    }
+}

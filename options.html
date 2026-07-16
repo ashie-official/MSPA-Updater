@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MSPA Updater Options</title>
+  <!-- Load local Bootstrap CSS -->
+  <link rel="stylesheet" href="css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #535353;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+        }
+
+        .mspa-container {
+            background-color: #efefef; /* The light gray color from the MSPA panel */
+            font-family: "Courier New", Courier, monospace; /* Fits the MSPA aesthetic */
+            width: 100%;
+            max-width: 850px; 
+            min-height: 100vh;
+            padding: 20px 40px 40px 40px; /* Reduced top padding from 40px to 20px */
+            box-sizing: border-box;
+            
+            border-left: 10px solid #cccccc;
+            border-right: 10px solid #cccccc;
+            
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Stacked Settings Wrapper */
+        .settings-stack {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            gap: 25px;
+        }
+
+        /* Center and constrain dropdown blocks to a uniform 50% max width */
+        .setting-item {
+            width: 100%;
+            max-width: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Clean look for the dropdown inputs themselves so they stretch consistently */
+        select {
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Force both the settings dropdown section and the comic panels row to stretch */
+        .mspa-container > .row,
+        .mspa-container > .settings-stack {
+            width: 100% !important;
+        }
+
+        /* Keep the dropdown labels and comic titles on a single clean line */
+        label, 
+        h1, h2, h3, h4, .comic-title {
+            white-space: nowrap !important;
+        }
+
+        /* Apply Verdana specifically to buttons, dropdowns, dropdown labels, and links */
+        .btn, 
+        label,
+        select,
+        [id*="Download"], [class*="download"],
+        .preview-container, .preview-prompt, .preview-link, .preview-arrow {
+            font-family: 'Verdana', Geneva, Tahoma, sans-serif !important;
+        }
+
+        /* Dynamic Preview Styles */
+        .preview-container {
+            width: 100%;
+            margin-bottom: 12px;
+            font-size: 0.95rem;
+        }
+
+        .preview-label {
+            font-weight: bold;
+            color: #555555;
+            margin-bottom: 4px;
+        }
+
+        .preview-prompt {
+            font-size: 1.1rem;
+        }
+
+        .preview-arrow {
+            color: #000000;
+            /* font-weight: bold; */
+            margin-right: 4px;
+        }
+
+        .preview-link {
+            color: #0000ee;
+            text-decoration: underline;
+            display: inline-block; /* Crucial for filters like blur to render correctly on inline elements */
+            transition: filter 0.15s ease, opacity 0.15s ease;
+        }
+
+        /* Applied dynamically via JS directly to the link */
+        .preview-blur {
+            filter: blur(6px);
+        }
+
+        .preview-hide {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .header-section {
+            position: relative;
+        }
+
+        .status-bubble {
+            font-size: 1.25rem;
+            font-weight: bold;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            width: 100%;
+            max-width: 320px; /* Keeps the bubbles from stretching too wide */
+            color: white;
+            transition: background-color 0.7s ease;
+        }
+
+        /* Dynamic bubble colors */
+        .bubble-not-started { background-color: #6c757d; } /* Gray */
+        .bubble-started { background-color: #2ECC71; }     /* Green */
+        .bubble-default-sched { background-color: #2d9dff; } /* Blue */
+        .bubble-custom-sched { background-color: #ba55d3; }  /* Magenta/Purple */
+
+        .comic-icon {
+            width: 164px;
+            height: 164px;
+            object-fit: cover;
+        }
+
+        .download-section {
+            font-size: 1.25rem;
+        }
+
+        /* Hidden inputs to be activated by styled buttons */
+        .hidden-input {
+            position: absolute;
+            /* Position it perfectly over the button */
+            top: 8px; /* Matches the mt-2 margin of the button */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 140px;  /* Matches the rough width of the button */
+            height: 31px;  /* Matches the height of the button */
+            opacity: 0;    /* Completely invisible */
+            border: none;
+            pointer-events: none; /* Clicks pass through to the button; JS handles opening */
+        }
+    </style>
+</head>
+<body>
+    <div class="mspa-container">
+        <!-- Header Section (Reduced Padding & Margin) -->
+        <div class="header-section pb-2 mb-3 border-bottom">
+            <h1 class="display-4 fw-bold">MSPA Updater</h1>
+        </div>
+
+        <!-- Settings Dropdowns Section (Stacked, Centered, 50% Max Width) -->
+        <div class="settings-stack mb-5">
+            <div class="setting-item">
+                <label for="dateFormat" class="form-label fw-bold fs-5">Date Format</label>
+                <select id="dateFormat" class="form-select">
+                    <option value="default" selected>4/13/09 (default)</option>
+                    <option value="us-long">Apr 13, 2009</option>
+                    <option value="uk-long">13 Apr, 2009</option>
+                </select>
+            </div>
+            
+            <div class="setting-item">
+                <label for="unreleasedBehavior" class="form-label fw-bold fs-5">Unreleased Updates</label>
+
+                <!-- Dynamic Preview Block -->
+                <div class="preview-container text-start">
+                    <div class="preview-label">Preview:</div>
+                    <div class="preview-prompt">
+                        <span class="preview-arrow">></span> 
+                        <a href="#" id="previewLink" class="preview-link" onclick="return false;">Sample prompt.</a>
+                    </div>
+                </div>
+
+                <select id="unreleasedBehavior" class="form-select">
+                    <option value="blur" selected>Blur (default)</option>
+                    <option value="hide">Hide</option>
+                    <option value="show">Show always</option>
+                </select>
+            </div>
+            
+            <div class="setting-item">
+                <label for="passwordBehavior" class="form-label fw-bold fs-5">Password Prompts</label>
+                <select id="passwordBehavior" class="form-select">
+                    <option value="hide" selected>Hide (default)</option>
+                    <option value="show">Show always</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Main Game Panels Section -->
+        <div class="row text-center align-items-stretch mb-3">
+            
+            <!-- Homestuck Column -->
+            <div class="col-md-6 pe-md-4 position-relative mb-5 mb-md-0">
+            
+                <!-- Centered Header & Icon -->
+                <div class="d-flex flex-column align-items-center justify-content-center gap-2 mb-4">
+                    <!-- PLACEHOLDER FOR HOMESTUCK ICON -->
+                    <img src="images/archive_hs.gif" class="comic-icon" alt="Homestuck">
+                    <h2 class="h1 mb-0 fw-bold">Homestuck</h2>
+                </div>
+
+                <!-- Date Section (Bubble + Button paired and centered) -->
+                <!-- Wrap the button and input in a relative wrapper -->
+                <div class="d-flex flex-column align-items-center mb-4 w-100">
+                    <div id="hsDateBubble" class="status-bubble bubble-not-started m-auto">Not Started</div>
+                    <div class="position-relative d-inline-block w-100 text-center">
+                        <button id="hsDateBtn" class="btn btn-outline-dark btn-sm mt-2">Enter Start Date</button>
+                        <input type="date" id="hsDateInput" class="hidden-input">
+                    </div>
+                </div>
+
+                <!-- Schedule Section (Bubble + Button paired and centered) -->
+                <div class="d-flex flex-column align-items-center">
+                    <div id="hsSchedBubble" class="status-bubble bubble-default-sched">Using Default Schedule</div>
+                    <button id="hsSchedBtn" class="btn btn-outline-dark btn-sm mt-2">Upload Custom Schedule .json</button>
+                    <input type="file" id="hsSchedInput" accept=".json" class="hidden-input">
+                </div>
+            
+            <!-- Vertical dividing line for larger screens -->
+            <div class="d-none d-md-block position-absolute top-0 end-0 h-100 border-end border-dark" style="margin-right: -2px;"></div>
+            </div>
+
+            <!-- Problem Sleuth Column -->
+            <div class="col-md-6 ps-md-4">
+            
+                <!-- Centered Header & Icon -->
+                <div class="d-flex flex-column align-items-center justify-content-center gap-2 mb-4">
+                    <!-- PLACEHOLDER FOR PROBLEM SLEUTH ICON -->
+                    <img src="images/archive_ps.gif" class="comic-icon" alt="Problem Sleuth">
+                    <h2 class="h1 mb-0 fw-bold">Problem Sleuth</h2>
+                </div>
+
+                <!-- Date Section (Bubble + Button paired and centered) -->
+                    <div class="d-flex flex-column align-items-center mb-4 w-100">
+                        <div id="psDateBubble" class="status-bubble bubble-not-started m-auto">Not Started</div>
+                        <div class="position-relative d-inline-block w-100 text-center">
+                            <button id="psDateBtn" class="btn btn-outline-dark btn-sm mt-2">Enter Start Date</button>
+                            <input type="date" id="psDateInput" class="hidden-input">
+                        </div>
+                    </div>
+
+                <!-- Schedule Section (Bubble + Button paired and centered) -->
+                <div class="d-flex flex-column align-items-center">
+                    <div id="psSchedBubble" class="status-bubble bubble-default-sched">Using Default Schedule</div>
+                    <button id="psSchedBtn" class="btn btn-outline-dark btn-sm mt-2">Upload Custom Schedule .json</button>
+                    <input type="file" id="psSchedInput" accept=".json" class="hidden-input">
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Footer Link -->
+        <div class="text-center mt-2 pt-2 border-top"> <!-- Changed mt-5 pt-4 to mt-2 pt-2 -->
+            <label for="dateFormat" class="form-label fs-5">></label>
+            <a href="#" id="downloadSchedules" class="download-section text-primary text-decoration-underline">
+                Download current schedules.
+            </a>
+        </div>
+
+        <!-- Load options control logic -->
+        <script src="options.js"></script>
+    </div>
+</body>
+</html>
