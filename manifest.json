@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "MSPA Updater",
-    "version": "0.0.1",
+    "version": "1.0.0",
     "description": "Browser extension for rereading MS Paint Adventures in lockstep with the original updates. The link to the next page only becomes visible if the time you've spent rereading exceeds the original time it took for the update to release.",
     
     "host_permissions": [
@@ -37,14 +37,14 @@
 
     "action": {
         "default_icon": {
-        "16": "images/icons/mspa16.png",
-        "32": "images/icons/mspa32.png"
+        "16": "images/extension-icons/mspa16.png",
+        "32": "images/extension-icons/mspa32.png"
         },
         "default_popup": "popup.html"
     },
     "icons": {
-        "16": "images/icons/mspa16.png",
-        "48": "images/icons/mspa48.png",
-        "128": "images/icons/mspa128.png"
+        "16": "images/extension-icons/mspa16.png",
+        "48": "images/extension-icons/mspa48.png",
+        "128": "images/extension-icons/mspa128.png"
     }
 }

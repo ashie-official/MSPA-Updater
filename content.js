@@ -125,22 +125,31 @@ async function loadActiveSchedule(ctx, customScheduleData) {
 // 6. DOM Element Locators & Modifiers
 // ==========================================================================
 function findNextPromptLink() {
-  const currentUrl = window.location.href;
-  const currentMatch = currentUrl.match(/(\d{4,6})/);
-  if (!currentMatch) return null;
+  try {
+    const currentUrl = window.location.href;
+    const currentMatch = currentUrl.match(/(\d{4,6})/);
+    if (!currentMatch) return null;
 
-  const currentPageNum = parseInt(currentMatch[1], 10);
-  const links = document.querySelectorAll('a[href]');
+    const currentPageNum = parseInt(currentMatch[1], 10);
+    const links = document.querySelectorAll('a[href]');
 
-  for (const link of links) {
-    const href = link.getAttribute('href') || '';
-    const match = href.match(/(\d{4,6})/);
-    if (match) {
-      const pageNum = parseInt(match[1], 10);
-      if (pageNum === currentPageNum + 1) {
-        return link;
+    for (const link of links) {
+      const rawHref = link.getAttribute('href');
+      if (!rawHref) continue;
+
+      // Handle SVGAnimatedString or unusual non-string attributes safely
+      const hrefStr = typeof rawHref === 'string' ? rawHref : String(rawHref);
+      const match = hrefStr.match(/(\d{4,6})/);
+
+      if (match) {
+        const pageNum = parseInt(match[1], 10);
+        if (pageNum === currentPageNum + 1) {
+          return link;
+        }
       }
     }
+  } catch (e) {
+    // Prevent DOM timing exceptions during Vue hydration
   }
 
   return null;
@@ -184,9 +193,6 @@ function applyUnreleasedBehavior(targetLink, behavior) {
 // ==========================================================================
 // 7. Main Orchestrator
 // ==========================================================================
-// ==========================================================================
-// 7. Main Orchestrator
-// ==========================================================================
 async function runMSPAUpdater() {
   const ctx = getStoryContext();
   if (!ctx) return;
@@ -212,14 +218,12 @@ async function runMSPAUpdater() {
 
     // ----------------------------------------------------------------------
     // Password Prompt Handling (Homestuck specific)
-    // Runs AFTER DOM links mount
     // ----------------------------------------------------------------------
     if (ctx.storyKey === 'homestuck' && (settings.passwordBehavior || 'hide') === 'hide') {
       const links = document.querySelectorAll('a[href]');
 
       for (const link of links) {
         const href = link.getAttribute('href') || '';
-        // Matches /009058, /9058, or https://homestuck.com/009058
         const match = href.match(/(\d{4,6})/);
 
         if (match) {
@@ -240,13 +244,13 @@ async function runMSPAUpdater() {
     // ----------------------------------------------------------------------
     // Next Prompt Link Handling
     // ----------------------------------------------------------------------
-    if (!nextLink) return;
+    if (nextLink) {
+      const match = (nextLink.getAttribute('href') || '').match(/(\d{4,6})/);
+      const nextPageNum = match ? parseInt(match[1], 10) : null;
 
-    const match = (nextLink.getAttribute('href') || '').match(/(\d{4,6})/);
-    const nextPageNum = match ? parseInt(match[1], 10) : null;
-
-    if (nextPageNum !== null && nextPageNum > maxAllowedPage) {
-      applyUnreleasedBehavior(nextLink, settings.unreleasedBehavior || 'blur');
+      if (nextPageNum !== null && nextPageNum > maxAllowedPage) {
+        applyUnreleasedBehavior(nextLink, settings.unreleasedBehavior || 'blur');
+      }
     }
   };
 
