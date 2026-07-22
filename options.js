@@ -1,6 +1,19 @@
-const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
+// ==========================================================================
+// 0. Cross-Browser API Initialization
+// ==========================================================================
+function getExtensionStorage() {
+  if (typeof browser !== 'undefined' && browser.storage) {
+    return browser.storage.local;
+  }
+  if (typeof chrome !== 'undefined' && chrome.storage) {
+    return chrome.storage.local;
+  }
+  return null;
+}
 
-// State Management
+const extensionStorage = getExtensionStorage();
+
+// State Management Container
 const STATE = {
   settings: {
     dateFormat: 'default',
@@ -9,24 +22,30 @@ const STATE = {
   },
   homestuck: {
     startDate: null,
-    customSchedule: false
+    customSchedule: false,
+    fileName: null,
+    scheduleData: null
   },
   problemSleuth: {
     startDate: null,
-    customSchedule: false
+    customSchedule: false,
+    fileName: null,
+    scheduleData: null
   }
 };
 
-// Helper: Format Dates dynamically without timezone shift issues
+// ==========================================================================
+// 1. Helper Functions & UI Formatters
+// ==========================================================================
+
 function formatDate(dateString, format) {
   if (!dateString) return 'Not Started';
   
-  // Split the YYYY-MM-DD string directly to avoid UTC timezone-shift bugs
   const parts = dateString.split('-');
   if (parts.length !== 3) return 'Not Started';
   
   const year = parseInt(parts[0], 10);
-  const monthIdx = parseInt(parts[1], 10) - 1; // 0-indexed
+  const monthIdx = parseInt(parts[1], 10) - 1;
   const day = parseInt(parts[2], 10);
   
   const date = new Date(year, monthIdx, day);
@@ -38,102 +57,177 @@ function formatDate(dateString, format) {
   const y = date.getFullYear().toString().slice(-2);
   const fullY = date.getFullYear();
 
-  if (format === 'us-long') {
-    return `${months[m]} ${d}, ${fullY}`;
-  } else if (format === 'uk-long') {
-    return `${d} ${months[m]}, ${fullY}`;
-  } else {
-    // Default: 4/13/09
-    return `${m + 1}/${d}/${y}`;
+  switch (format) {
+    case 'us-long': return `${months[m]} ${d}, ${fullY}`;
+    case 'uk-long': return `${d} ${months[m]}, ${fullY}`;
+    default:        return `${m + 1}/${d}/${y}`;
   }
 }
 
-// Update UI display elements to match the current state
+function adjustBubbleFontSize(bubbleEl, text) {
+  bubbleEl.textContent = text;
+  
+  let fontSize = 1.25;
+  bubbleEl.style.fontSize = `${fontSize}rem`;
+
+  while (bubbleEl.scrollWidth > bubbleEl.clientWidth && fontSize > 0.75) {
+    fontSize -= 0.05;
+    bubbleEl.style.fontSize = `${fontSize}rem`;
+  }
+}
+
 function updateUI() {
   const format = STATE.settings.dateFormat;
-  console.log("Updating UI with State:", STATE);
 
-  // --- HOMESTUCK ---
-  const hsDateBubble = document.getElementById('hsDateBubble');
-  const hsDateBtn = document.getElementById('hsDateBtn');
-  if (STATE.homestuck.startDate) {
-    hsDateBubble.textContent = `Started ${formatDate(STATE.homestuck.startDate, format)}`;
-    hsDateBubble.className = 'status-bubble bubble-started m-auto';
-    hsDateBtn.textContent = 'Delete Game Data';
-    hsDateBtn.className = 'btn btn-danger btn-sm mt-2'; 
-  } else {
-    hsDateBubble.textContent = 'Not Started';
-    hsDateBubble.className = 'status-bubble bubble-not-started m-auto';
-    hsDateBtn.textContent = 'Enter Start Date';
-    hsDateBtn.className = 'btn btn-outline-dark btn-sm mt-2'; 
+  const comics = [
+    { prefix: 'hs', key: 'homestuck' },
+    { prefix: 'ps', key: 'problemSleuth' }
+  ];
+
+  comics.forEach(({ prefix, key }) => {
+    const comicState = STATE[key];
+    const dateBubble = document.getElementById(`${prefix}DateBubble`);
+    const dateBtn = document.getElementById(`${prefix}DateBtn`);
+    const dateControls = document.getElementById(`${prefix}DateControls`);
+    const schedBubble = document.getElementById(`${prefix}SchedBubble`);
+    const schedBtn = document.getElementById(`${prefix}SchedBtn`);
+
+    if (comicState.startDate && dateBubble) {
+      dateBubble.textContent = `Started ${formatDate(comicState.startDate, format)}`;
+      dateBubble.className = 'status-bubble bubble-started m-auto';
+      
+      if (dateControls) dateControls.classList.add('d-none-important');
+      if (dateBtn) dateBtn.style.display = 'inline-block';
+    } else if (dateBubble) {
+      dateBubble.textContent = 'Not Started';
+      dateBubble.className = 'status-bubble bubble-not-started m-auto';
+      
+      if (dateControls) dateControls.classList.remove('d-none-important');
+      if (dateBtn) dateBtn.style.display = 'none';
+
+      const monthEl = document.getElementById(`${prefix}Month`);
+      const dayEl = document.getElementById(`${prefix}Day`);
+      const yearEl = document.getElementById(`${prefix}Year`);
+
+      if (monthEl) monthEl.value = '';
+      if (dayEl) dayEl.value = '';
+      if (yearEl) yearEl.value = '';
+    }
+
+    if (schedBubble && schedBtn) {
+      if (comicState.customSchedule) {
+        const rawName = comicState.fileName || 'Custom';
+        const cleanName = rawName.replace(/\.json$/i, '');
+        const labelText = `Using ${cleanName}`;
+
+        schedBubble.className = 'status-bubble bubble-custom-sched m-auto';
+        adjustBubbleFontSize(schedBubble, labelText);
+
+        schedBtn.textContent = 'Reset to Default';
+        schedBtn.className = 'btn btn-danger btn-sm mt-2';
+      } else {
+        schedBubble.className = 'status-bubble bubble-default-sched m-auto';
+        adjustBubbleFontSize(schedBubble, 'Using Default Schedule');
+
+        schedBtn.textContent = 'Upload Custom (.json)';
+        schedBtn.className = 'btn btn-outline-dark btn-sm mt-2';
+      }
+    }
+  });
+
+  updateDropdownOrder();
+  updateUnreleasedPreview();
+}
+
+function updateUnreleasedPreview() {
+  const select = document.getElementById('unreleasedBehavior');
+  const link = document.getElementById('previewLink');
+  if (!select || !link) return;
+
+  link.className = 'preview-link';
+  if (select.value === 'blur') link.classList.add('preview-blur');
+  else if (select.value === 'hide') link.classList.add('preview-hide');
+}
+
+function syncDropdowns() {
+  const df = document.getElementById('dateFormat');
+  const ub = document.getElementById('unreleasedBehavior');
+  const pb = document.getElementById('passwordBehavior');
+
+  if (df) df.value = STATE.settings.dateFormat;
+  if (ub) ub.value = STATE.settings.unreleasedBehavior;
+  if (pb) pb.value = STATE.settings.passwordBehavior;
+}
+
+function updateDropdownOrder() {
+  const isUK = STATE.settings.dateFormat === 'uk-long';
+  const prefixes = ['hs', 'ps'];
+
+  prefixes.forEach((prefix) => {
+    const container = document.getElementById(`${prefix}DateControls`);
+    const month = document.getElementById(`${prefix}Month`);
+    const day = document.getElementById(`${prefix}Day`);
+    const year = document.getElementById(`${prefix}Year`);
+
+    if (!container || !month || !day || !year) return;
+
+    if (isUK) {
+      container.appendChild(day);
+      container.appendChild(month);
+      container.appendChild(year);
+    } else {
+      container.appendChild(month);
+      container.appendChild(day);
+      container.appendChild(year);
+    }
+  });
+}
+
+function populateDateDropdowns(prefix) {
+  const daySelect = document.getElementById(`${prefix}Day`);
+  const yearSelect = document.getElementById(`${prefix}Year`);
+  if (!daySelect || !yearSelect) return;
+
+  daySelect.innerHTML = '<option value="">Day</option>';
+  yearSelect.innerHTML = '<option value="">Year</option>';
+
+  for (let d = 1; d <= 31; d++) {
+    const opt = document.createElement('option');
+    opt.value = d;
+    opt.textContent = d;
+    daySelect.appendChild(opt);
   }
 
-  const hsSchedBubble = document.getElementById('hsSchedBubble');
-  const hsSchedBtn = document.getElementById('hsSchedBtn');
-  if (STATE.homestuck.customSchedule) {
-    hsSchedBubble.textContent = 'Using Custom Schedule';
-    hsSchedBubble.className = 'status-bubble bubble-custom-sched m-auto';
-    hsSchedBtn.textContent = 'Reset to Default';
-    hsSchedBtn.className = 'btn btn-danger btn-sm mt-2'; 
-  } else {
-    hsSchedBubble.textContent = 'Using Default Schedule';
-    hsSchedBubble.className = 'status-bubble bubble-default-sched m-auto';
-    hsSchedBtn.textContent = 'Upload Custom (.json)';
-    hsSchedBtn.className = 'btn btn-outline-dark btn-sm mt-2';
-  }
-
-  // --- PROBLEM SLEUTH ---
-  const psDateBubble = document.getElementById('psDateBubble');
-  const psDateBtn = document.getElementById('psDateBtn');
-  if (STATE.problemSleuth.startDate) {
-    psDateBubble.textContent = `Started ${formatDate(STATE.problemSleuth.startDate, format)}`;
-    psDateBubble.className = 'status-bubble bubble-started m-auto';
-    psDateBtn.textContent = 'Delete Game Data';
-    psDateBtn.className = 'btn btn-danger btn-sm mt-2';
-  } else {
-    psDateBubble.textContent = 'Not Started';
-    psDateBubble.className = 'status-bubble bubble-not-started m-auto';
-    psDateBtn.textContent = 'Enter Start Date';
-    psDateBtn.className = 'btn btn-outline-dark btn-sm mt-2';
-  }
-
-  const psSchedBubble = document.getElementById('psSchedBubble');
-  const psSchedBtn = document.getElementById('psSchedBtn');
-  if (STATE.problemSleuth.customSchedule) {
-    psSchedBubble.textContent = 'Using Custom Schedule';
-    psSchedBubble.className = 'status-bubble bubble-custom-sched m-auto';
-    psSchedBtn.textContent = 'Reset to Default';
-    psSchedBtn.className = 'btn btn-danger btn-sm mt-2';
-  } else {
-    psSchedBubble.textContent = 'Using Default Schedule';
-    psSchedBubble.className = 'status-bubble bubble-default-sched m-auto';
-    psSchedBtn.textContent = 'Upload Custom (.json)';
-    psSchedBtn.className = 'btn btn-outline-dark btn-sm mt-2';
+  const currentYear = new Date().getFullYear();
+  for (let y = 2008; y <= currentYear + 2; y++) {
+    const opt = document.createElement('option');
+    opt.value = y;
+    opt.textContent = y;
+    yearSelect.appendChild(opt);
   }
 }
 
-// Robust Save Function
+// ==========================================================================
+// 2. Storage Drivers
+// ==========================================================================
+
 function saveToStorage() {
-  if (typeof browserAPI !== 'undefined' && browserAPI.storage && browserAPI.storage.sync) {
-    browserAPI.storage.sync.set({ mspaState: STATE }, () => {
-      console.log('Saved to Sync Storage.');
-    });
+  const storage = getExtensionStorage();
+  if (storage) {
+    storage.set({ mspaState: STATE });
   } else {
     localStorage.setItem('mspaState', JSON.stringify(STATE));
-    console.log('Saved to LocalStorage (Fallback).');
   }
 }
 
-// Robust Load Function with fallback execution
 function loadFromStorage() {
-  if (typeof browserAPI !== 'undefined' && browserAPI.storage && browserAPI.storage.sync) {
-    browserAPI.storage.sync.get(['mspaState'], (result) => {
-      if (result && result.mspaState) {
-        Object.assign(STATE, result.mspaState);
-        syncDropdowns();
-      }
-      updateUI();
-    });
+  const storage = getExtensionStorage();
+  if (storage) {
+    if (typeof browser !== 'undefined' && browser.storage) {
+      storage.get(['mspaState', 'hsCustomSchedule', 'psCustomSchedule']).then(processStorageData);
+    } else {
+      storage.get(['mspaState', 'hsCustomSchedule', 'psCustomSchedule'], processStorageData);
+    }
   } else {
     const saved = localStorage.getItem('mspaState');
     if (saved) {
@@ -144,137 +238,341 @@ function loadFromStorage() {
   }
 }
 
-function syncDropdowns() {
-  document.getElementById('dateFormat').value = STATE.settings.dateFormat;
-  document.getElementById('unreleasedBehavior').value = STATE.settings.unreleasedBehavior;
-  document.getElementById('passwordBehavior').value = STATE.settings.passwordBehavior;
+function processStorageData(result) {
+  if (result && result.mspaState) {
+    Object.assign(STATE, result.mspaState);
+    syncDropdowns();
+  }
+
+  if (result && result.hsCustomSchedule) {
+    STATE.homestuck.customSchedule = true;
+    STATE.homestuck.scheduleData = result.hsCustomSchedule;
+  }
+  if (result && result.psCustomSchedule) {
+    STATE.problemSleuth.customSchedule = true;
+    STATE.problemSleuth.scheduleData = result.psCustomSchedule;
+  }
+
+  updateUI();
 }
 
-// Event Listeners for global Dropdowns
-document.getElementById('dateFormat').addEventListener('change', (e) => {
-  STATE.settings.dateFormat = e.target.value;
-  saveToStorage();
-  updateUI();
-});
+// ==========================================================================
+// 3. Dynamic Schedule Downloader Module
+// ==========================================================================
 
-document.getElementById('unreleasedBehavior').addEventListener('change', (e) => {
-  STATE.settings.unreleasedBehavior = e.target.value;
-  saveToStorage();
-});
+function triggerFileDownload(filename, contentString) {
+  const blob = new Blob([contentString], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
-document.getElementById('passwordBehavior').addEventListener('change', (e) => {
-  STATE.settings.passwordBehavior = e.target.value;
-  saveToStorage();
-});
+async function fetchDefaultSchedule(path) {
+  try {
+    const response = await fetch(path);
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    return await response.text();
+  } catch (err) {
+    console.error(`Failed to fetch default schedule at ${path}:`, err);
+    return null;
+  }
+}
 
-// Controls binding (attached directly on execution)
+async function downloadActiveSchedules() {
+  const downloadTasks = [
+    {
+      key: 'homestuck',
+      defaultPath: 'schedules/homestuck-default.json',
+      fallbackName: 'homestuck-custom.json'
+    },
+    {
+      key: 'problemSleuth',
+      defaultPath: 'schedules/problemsleuth-default.json',
+      fallbackName: 'problemsleuth-custom.json'
+    }
+  ];
+
+  for (const task of downloadTasks) {
+    const comicState = STATE[task.key];
+
+    if (comicState.customSchedule && comicState.scheduleData) {
+      // Download Custom Schedule from state memory
+      const jsonStr = JSON.stringify(comicState.scheduleData, null, 2);
+      const downloadName = comicState.fileName || task.fallbackName;
+      triggerFileDownload(downloadName, jsonStr);
+    } else {
+      // Download Default Schedule from schedules/ directory
+      const defaultContent = await fetchDefaultSchedule(task.defaultPath);
+      if (defaultContent) {
+        const defaultFilename = task.defaultPath.split('/').pop();
+        triggerFileDownload(defaultFilename, defaultContent);
+      }
+    }
+  }
+}
+
+// ==========================================================================
+// 4. Schedule Validation Logic
+// ==========================================================================
+
+function validateScheduleSchema(json) {
+  if (typeof json !== 'object' || json === null || Array.isArray(json)) {
+    return { valid: false, error: "Root element must be a JSON object." };
+  }
+
+  if (!Number.isInteger(json.schedule_version) || json.schedule_version < 1) {
+    return { valid: false, error: "'schedule_version' must be a positive integer." };
+  }
+
+  let minPage, maxPage;
+  if (json.story === "homestuck") {
+    minPage = 1901;
+    maxPage = 10030;
+  } else if (json.story === "problemsleuth") {
+    minPage = 219;
+    maxPage = 1892;
+  } else {
+    return { valid: false, error: "'story' must be 'homestuck' or 'problemsleuth'." };
+  }
+
+  if (!Array.isArray(json.data) || json.data.length === 0) {
+    return { valid: false, error: "'data' must be a non-empty array." };
+  }
+
+  let lastDays = -1;
+
+  for (let i = 0; i < json.data.length; i++) {
+    const entry = json.data[i];
+
+    if (!Array.isArray(entry) || entry.length !== 2) {
+      return { valid: false, error: `Index ${i}: Entry must be an array pair [DAYS_ELAPSED, FINAL_PAGE].` };
+    }
+
+    const [days, page] = entry;
+
+    if (!Number.isInteger(days) || days < 0) {
+      return { valid: false, error: `Index ${i}: DAYS_ELAPSED must be a non-negative integer.` };
+    }
+
+    if (days <= lastDays) {
+      return { valid: false, error: `Index ${i}: DAYS_ELAPSED (${days}) must be greater than previous (${lastDays}).` };
+    }
+    lastDays = days;
+
+    if (!Number.isInteger(page) || page < minPage || page > maxPage) {
+      return { valid: false, error: `Index ${i}: FINAL_PAGE (${page}) out of range (${minPage}-${maxPage}) for ${json.story}.` };
+    }
+  }
+
+  return { valid: true };
+}
+
+// ==========================================================================
+// 5. Control Bindings & Event Handlers
+// ==========================================================================
+
 function setupComicControls(prefix, comicKey) {
-  const dateBtn = document.getElementById(`${prefix}DateBtn`);
-  const dateInput = document.getElementById(`${prefix}DateInput`);
-  const schedBtn = document.getElementById(`${prefix}SchedBtn`);
-  const schedInput = document.getElementById(`${prefix}SchedInput`);
+  populateDateDropdowns(prefix);
 
-  // --- Date Handling ---
-  const handleDateChange = (e) => {
-    if (e.target.value) {
-      console.log(`${prefix} date changed to:`, e.target.value);
-      STATE[comicKey].startDate = e.target.value; 
+  const monthSel = document.getElementById(`${prefix}Month`);
+  const daySel = document.getElementById(`${prefix}Day`);
+  const yearSel = document.getElementById(`${prefix}Year`);
+  const dateBtn = document.getElementById(`${prefix}DateBtn`);
+
+  const checkAndSaveDate = () => {
+    if (!monthSel || !daySel || !yearSel) return;
+    const m = monthSel.value;
+    const d = daySel.value;
+    const y = yearSel.value;
+
+    if (m && d && y) {
+      const formattedMonth = m.padStart(2, '0');
+      const formattedDay = d.padStart(2, '0');
+      STATE[comicKey].startDate = `${y}-${formattedMonth}-${formattedDay}`;
       saveToStorage();
       updateUI();
     }
   };
 
-  dateBtn.addEventListener('click', () => {
-    if (STATE[comicKey].startDate) {
+  if (monthSel) monthSel.addEventListener('change', checkAndSaveDate);
+  if (daySel) daySel.addEventListener('change', checkAndSaveDate);
+  if (yearSel) yearSel.addEventListener('change', checkAndSaveDate);
+
+  if (dateBtn) {
+    dateBtn.addEventListener('click', (e) => {
+      e.preventDefault();
       STATE[comicKey].startDate = null;
-      dateInput.value = ''; 
+      saveToStorage();
+      updateUI();
+    });
+  }
+}
+
+function setupScheduleUploader(config) {
+  const schedBtn = document.getElementById(config.btnId);
+  const schedInput = document.getElementById(config.inputId);
+  const schedMsg = document.getElementById(config.msgId);
+
+  if (!schedBtn || !schedInput) return;
+
+  schedBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    
+    if (STATE[config.comicKey].customSchedule) {
+      STATE[config.comicKey].customSchedule = false;
+      STATE[config.comicKey].fileName = null;
+      STATE[config.comicKey].scheduleData = null;
+      schedInput.value = '';
+      
+      const storage = getExtensionStorage();
+      if (storage) {
+        storage.remove([config.storageKey]);
+      }
+      if (schedMsg) schedMsg.textContent = '';
+      
       saveToStorage();
       updateUI();
     } else {
-      dateInput.showPicker(); 
-    }
-  });
-
-  dateInput.addEventListener('change', handleDateChange);
-
-  // --- Schedule Upload Handling ---
-  schedBtn.addEventListener('click', () => {
-    if (STATE[comicKey].customSchedule) {
-      // If we are currently using a custom schedule, reset it back to default
-      STATE[comicKey].customSchedule = false;
-      schedInput.value = ''; // Clear out any selected file
-      saveToStorage();
-      updateUI();
-    } else {
-      // Otherwise, trigger the file selection dialog
       schedInput.click();
     }
   });
 
-  schedInput.addEventListener('change', (e) => {
-    if (e.target.files.length > 0) {
-      const file = e.target.files[0];
-      const reader = new FileReader();
-      
-      reader.onload = function(event) {
-        try {
-          // Parse file to ensure it's valid JSON before updating our state
-          JSON.parse(event.target.result);
-          STATE[comicKey].customSchedule = true;
+  schedInput.addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = async function (e) {
+      try {
+        const json = JSON.parse(e.target.result);
+
+        const validation = validateScheduleSchema(json);
+        if (!validation.valid) {
+          showError(validation.error);
+          return;
+        }
+
+        if (json.story !== config.expectedStory) {
+          showError(`Expected '${config.expectedStory}', but file is for '${json.story}'.`);
+          return;
+        }
+
+        STATE[config.comicKey].customSchedule = true;
+        STATE[config.comicKey].fileName = file.name;
+        STATE[config.comicKey].scheduleData = json;
+
+        const storage = getExtensionStorage();
+        if (storage) {
+          await storage.set({ 
+            [config.storageKey]: json,
+            mspaState: STATE 
+          });
+        } else {
           saveToStorage();
-          updateUI();
-        } catch (err) {
-          alert("Error: File is not a valid JSON schedule format!");
         }
-      };
-      
-      reader.readAsText(file);
-    }
+
+        if (schedMsg) {
+          schedMsg.textContent = `Loaded: ${file.name}`;
+          schedMsg.className = "text-success mt-1";
+        }
+        updateUI();
+
+      } catch (err) {
+        showError("Invalid JSON syntax.");
+      }
+    };
+
+    reader.onerror = () => showError("Error reading file from disk.");
+    reader.readAsText(file);
   });
-}
 
-function updateUnreleasedPreview() {
-    const select = document.getElementById('unreleasedBehavior');
-    const link = document.getElementById('previewLink');
-    if (!select || !link) return;
-
-    // Reset existing preview display classes on the link
-    link.className = 'preview-link';
-
-    if (select.value === 'blur') {
-        link.classList.add('preview-blur');
-    } else if (select.value === 'hide') {
-        link.classList.add('preview-hide');
+  function showError(msg) {
+    if (schedMsg) {
+      schedMsg.textContent = msg;
+      schedMsg.className = "text-danger mt-1";
     }
+    schedInput.value = "";
+  }
 }
 
-// Bind both columns to our state transitions using keys instead of direct references
-setupComicControls('hs', 'homestuck');
-setupComicControls('ps', 'problemSleuth');
+// ==========================================================================
+// 6. Boot Sequence
+// ==========================================================================
 
-// Boot Up
-document.addEventListener('DOMContentLoaded', loadFromStorage);
-
-document.getElementById('unreleasedBehavior').addEventListener('change', updateUnreleasedPreview);
-
-// Run once on boot-up inside your load storage handler
-// (Add this call at the very end of your DOMContentLoaded / loadFromStorage sequence)
-updateUnreleasedPreview();
-
-// --- Example of what your initialization block should look like ---
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Your existing code that retrieves settings from storage...
-    chrome.storage.sync.get(['unreleasedBehavior', 'dateFormat', 'passwordBehavior'], (items) => {
-        
-        // 2. Your existing code that sets the dropdown values...
-        if (items.unreleasedBehavior) {
-            document.getElementById('unreleasedBehavior').value = items.unreleasedBehavior;
-        }
-        
-        // ... (other dropdown populations) ...
+  const previewLink = document.getElementById('previewLink');
+  if (previewLink) {
+    previewLink.addEventListener('click', (e) => e.preventDefault());
+  }
 
-        // 3. ADD THIS LINE HERE:
-        // This ensures the preview style is instantly calculated on load!
-        updateUnreleasedPreview();
+  // Bind Download Schedules Link
+  const downloadLink = document.getElementById('downloadSchedules');
+  if (downloadLink) {
+    downloadLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      downloadActiveSchedules();
     });
+  }
+
+  // Bind global option listeners
+  const dateFormatEl = document.getElementById('dateFormat');
+  const unreleasedEl = document.getElementById('unreleasedBehavior');
+  const passwordEl = document.getElementById('passwordBehavior');
+
+  if (dateFormatEl) {
+    dateFormatEl.addEventListener('change', (e) => {
+      STATE.settings.dateFormat = e.target.value;
+      saveToStorage();
+      updateUI();
+    });
+  }
+
+  if (unreleasedEl) {
+    unreleasedEl.addEventListener('change', (e) => {
+      STATE.settings.unreleasedBehavior = e.target.value;
+      saveToStorage();
+      updateUnreleasedPreview();
+    });
+  }
+
+  if (passwordEl) {
+    passwordEl.addEventListener('change', (e) => {
+      STATE.settings.passwordBehavior = e.target.value;
+      saveToStorage();
+    });
+  }
+
+  // Bind date control fields
+  setupComicControls('hs', 'homestuck');
+  setupComicControls('ps', 'problemSleuth');
+
+  // Bind schedule uploaders
+  setupScheduleUploader({
+    btnId: 'hsSchedBtn',
+    inputId: 'hsSchedInput',
+    bubbleId: 'hsSchedBubble',
+    msgId: 'hsSchedMsg',
+    expectedStory: 'homestuck',
+    comicKey: 'homestuck',
+    storageKey: 'hsCustomSchedule'
+  });
+
+  setupScheduleUploader({
+    btnId: 'psSchedBtn',
+    inputId: 'psSchedInput',
+    bubbleId: 'psSchedBubble',
+    msgId: 'psSchedMsg',
+    expectedStory: 'problemsleuth',
+    comicKey: 'problemSleuth',
+    storageKey: 'psCustomSchedule'
+  });
+
+  // Load state and populate UI
+  loadFromStorage();
 });

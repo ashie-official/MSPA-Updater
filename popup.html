@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MSPA Updater Popup</title>
+  
+  <!-- Local Bootstrap CSS -->
+  <link rel="stylesheet" href="css/bootstrap.min.css">
+  
+  <style>
+    body {
+        background-color: #efefef;
+        font-family: "Courier New", Courier, monospace;
+        width: 450px;
+        margin: 0;
+        padding: 15px;
+        box-sizing: border-box;
+    }
+
+    .mspa-popup-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .header-author {
+        font-family: 'Lexend', Geneva, Tahoma, sans-serif !important;
+        color: #919191;
+        text-align: center;
+        font-size: 1.1rem !important;
+    }
+
+    .author-link {
+        color: #2d9dff;
+        text-decoration: underline;
+    }
+
+    .author-link:hover {
+        color: #435fbb;
+    }
+
+    label, h1, h2, h3, h4 {
+        white-space: nowrap !important;
+    }
+
+    .btn, label, select,
+    .preview-container, .preview-prompt, .preview-link, .preview-arrow {
+        font-family: 'Verdana', Geneva, Tahoma, sans-serif !important;
+    }
+
+    .settings-stack {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        gap: 20px;
+    }
+
+    .setting-item {
+        width: 100%;
+        max-width: 80%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    select {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .preview-container {
+        width: 100%;
+        margin-bottom: 8px;
+        font-size: 0.95rem;
+    }
+
+    .preview-label {
+        font-weight: bold;
+        color: #919191;
+        margin-bottom: 4px;
+    }
+
+    .preview-prompt {
+        font-size: 1.1rem;
+    }
+
+    .preview-arrow {
+        color: #000000;
+        margin-right: 4px;
+    }
+
+    .preview-link {
+        color: #0000ff;
+        text-decoration: underline;
+        display: inline-block;
+        transition: filter 0.15s ease, opacity 0.15s ease;
+    }
+
+    .preview-blur { filter: blur(6px); }
+    .preview-hide { opacity: 0; pointer-events: none; }
+
+    /* Compact Inline Header Avatars */
+    .comic-avatar-sm {
+      width: 28px;
+      height: 28px;
+      object-fit: contain;
+      border: 1px solid #000000;
+      background-color: #ffffff;
+      flex-shrink: 0;
+    }
+
+    /* Header Text */
+    .comic-title {
+      font-family: 'Courier New', Courier, monospace;
+      font-weight: bold;
+      font-size: 0.95rem;
+      white-space: nowrap;
+      color: #000000;
+    }
+
+    .status-bubble {
+      font-family: 'Courier New', Courier, monospace;
+      font-weight: bold;
+      font-size: 0.8rem;
+      color: #ffffff;
+      padding: 0.5rem 0.3rem;
+      border-radius: 8px;
+      text-align: center;
+      line-height: 1.2;
+      white-space: nowrap;      /* Crucial for font autosizing logic */
+      overflow: hidden;         /* Prevents overflow during recalculation */
+    }
+
+    /* Color Classes Syncing with Options */
+    .bubble-not-started {
+      background-color: #6c757d; /* Dark Grey */
+    }
+
+    .bubble-started {
+      background-color: #2eca6a; /* Green */
+    }
+
+    .bubble-default-sched {
+      background-color: #3b99fc; /* Bright Blue */
+    }
+
+    .bubble-custom-sched {
+      background-color: #b359d4; /* Purple */
+    }
+
+    /* Homestuck Command Prompt Link */
+    .prompt-arrow {
+      font-family: 'Verdana', Geneva, Tahoma, sans-serif !important;
+      color: #000000;
+      font-size: 1.5rem;
+    }
+
+    .settings-prompt-link {
+      font-family: 'Verdana', Geneva, Tahoma, sans-serif !important;
+      font-size: 1.5rem;
+      color: #0000FF;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
+  </style>
+</head>
+<body>
+
+  <div class="mspa-popup-container">
+    
+    <!-- Header Section -->
+    <div class="header-section pb-2 mb-3 border-bottom text-center">
+      <h1 class="display-6 fw-bold">MSPA Updater</h1>
+      <div class="header-author fs-6">
+        by <a href="https://github.com/ashie-official" target="_blank" rel="noopener noreferrer" class="author-link">ashiepeace</a>
+      </div>
+    </div>
+
+    <!-- Global Settings Section -->
+    <div class="settings-stack mb-4">
+      
+      <!-- Unreleased Updates with Live Preview -->
+      <div class="setting-item">
+        <label for="unreleasedBehavior" class="form-label fw-bold fs-6">Unreleased Updates</label>
+        <div class="preview-container text-start">
+          <div class="preview-label">Preview:</div>
+          <div class="preview-prompt">
+            <span class="preview-arrow">></span> 
+            <a href="#" id="previewLink" class="preview-link">Sample prompt.</a>
+          </div>
+        </div>
+        <select id="unreleasedBehavior" class="form-select form-select-sm">
+          <option value="blur" selected>Blur (default)</option>
+          <option value="hide">Hide</option>
+          <option value="show">Show always</option>
+        </select>
+      </div>
+      
+      <!-- Password Prompts -->
+      <div class="setting-item">
+        <label for="passwordBehavior" class="form-label fw-bold fs-6">Password Prompts</label>
+        <select id="passwordBehavior" class="form-select form-select-sm">
+          <option value="hide" selected>Hide (default)</option>
+          <option value="show">Show always</option>
+        </select>
+      </div>
+
+    </div>
+
+    <!-- Mini Status Overview -->
+    <div class="row g-2 mb-3 text-center align-items-start">
+      <!-- Homestuck Column -->
+      <div class="col-6 d-flex flex-column align-items-center">
+        <!-- Inline Icon + Header -->
+        <div class="d-flex align-items-center justify-content-center gap-2 mb-2 w-100">
+          <img src="images/archive_hs.gif" alt="Homestuck" class="comic-avatar-sm">
+          <span class="comic-title">Homestuck</span>
+        </div>
+        
+        <!-- Bubble Stack -->
+        <div class="w-100 d-flex flex-column gap-2">
+          <div id="hsDateBubble" class="status-bubble bubble-not-started">
+            Not Started
+          </div>
+          <div id="hsSchedBubble" class="status-bubble bubble-default-sched">
+            Using Default Schedule
+          </div>
+        </div>
+      </div>
+
+      <!-- Problem Sleuth Column -->
+      <div class="col-6 d-flex flex-column align-items-center">
+        <!-- Inline Icon + Header -->
+        <div class="d-flex align-items-center justify-content-center gap-2 mb-2 w-100">
+          <img src="images/archive_ps.gif" alt="Problem Sleuth" class="comic-avatar-sm">
+          <span class="comic-title">Problem Sleuth</span>
+        </div>
+        
+        <!-- Bubble Stack -->
+        <div class="w-100 d-flex flex-column gap-2">
+          <div id="psDateBubble" class="status-bubble bubble-not-started">
+            Not Started
+          </div>
+          <div id="psSchedBubble" class="status-bubble bubble-default-sched">
+            Using Default Schedule
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Open Options Prompt -->
+    <div class="w-100 text-center pt-2 mt-2 border-top">
+      <span class="prompt-arrow">></span>
+      <a href="#" id="openOptionsBtn" class="settings-prompt-link">Open full settings.</a>
+    </div>
+
+  </div>
+
+  <script src="popup.js" defer></script>
+</body>
+</html>
