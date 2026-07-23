@@ -4,6 +4,15 @@
     "version": "1.0.0",
     "description": "Browser extension for rereading MS Paint Adventures in lockstep with the original updates. The link to the next page only becomes visible if the time you've spent rereading exceeds the original time it took for the update to release.",
     
+    "browser_specific_settings": {
+        "gecko": {
+            "id": "mspa-updater@ashie.blue",
+            "data_collection_permissions": {
+                "required": ["none"]
+            }
+        }
+    },
+
     "host_permissions": [
         "*://*.homestuck.com/*",
         "*://homestuck.com/*"
