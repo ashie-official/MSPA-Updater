@@ -696,12 +696,6 @@ document.addEventListener('DOMContentLoaded', () => {
   if (promptICalMaker) {
     promptICalMaker.addEventListener('click', (e) => {
       e.preventDefault();
-      // if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.openOptionsPage) {
-      //   chrome.runtime.openOptionsPage();
-      // } else if (typeof browser !== 'undefined' && browser.runtime && browser.runtime.openOptionsPage) {
-      //   browser.runtime.openOptionsPage();
-      // } else {
-      // }
       window.location.href = '/pages/ical-maker/ical-maker.html';
     });
   }
