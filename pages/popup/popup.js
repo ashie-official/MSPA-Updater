@@ -170,7 +170,7 @@ async function updateMiniView(state) {
       titleText: 'Homestuck', 
       baseUrl: 'https://www.homestuck.com/story/',
       minPage: 1901,
-      defaultSchedulePath: 'files/scheduleshomestuck-default.json'
+      defaultSchedulePath: '/files/scheduleshomestuck-default.json'
     },
     { 
       prefix: 'ps', 
@@ -178,7 +178,7 @@ async function updateMiniView(state) {
       titleText: 'Problem Sleuth', 
       baseUrl: 'https://www.homestuck.com/problemsleuth/',
       minPage: 219,
-      defaultSchedulePath: 'files/schedulesproblemsleuth-default.json'
+      defaultSchedulePath: '/files/schedulesproblemsleuth-default.json'
     }
   ];
 

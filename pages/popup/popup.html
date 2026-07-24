@@ -5,7 +5,7 @@
   <title>MSPA Updater Popup</title>
   
   <!-- Local Bootstrap CSS -->
-  <link rel="stylesheet" href="files/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/files/css/bootstrap.min.css">
   
   <style>
     body {
@@ -199,7 +199,7 @@
       <!-- Password Prompts -->
       <div class="setting-item">
         <label for="passwordBehavior" class="form-label fw-bold fs-6">Password Prompts</label>
-        <select id="passwordBehavior" class="form-select form-select-sm">
+        <select id="passwordBehavior" class="form-select">
           <option value="hide" selected>Hide (default)</option>
           <option value="show">Show always</option>
         </select>
@@ -213,7 +213,7 @@
       <div class="col-6 d-flex flex-column align-items-center">
         <!-- Inline Icon + Header -->
         <div class="d-flex align-items-center justify-content-center gap-2 mb-2 w-100">
-          <img src="files/images/story-icons/archive_hs.gif" alt="Homestuck" class="comic-avatar-sm">
+          <img src="/files/images/story-icons/archive_hs.gif" alt="Homestuck" class="comic-avatar-sm">
           <span class="comic-title" id="hsTitle">Homestuck</span>
         </div>
         
@@ -232,7 +232,7 @@
       <div class="col-6 d-flex flex-column align-items-center">
         <!-- Inline Icon + Header -->
         <div class="d-flex align-items-center justify-content-center gap-2 mb-2 w-100">
-          <img src="files/images/story-icons/archive_ps.gif" alt="Problem Sleuth" class="comic-avatar-sm">
+          <img src="/files/images/story-icons/archive_ps.gif" alt="Problem Sleuth" class="comic-avatar-sm">
           <span class="comic-title" id="psTitle">Problem Sleuth</span>
         </div>
         
@@ -265,6 +265,6 @@
 
   </div>
 
-  <script src="pages/popup/popup.js" defer></script>
+  <script src="popup.js" defer></script>
 </body>
 </html>
