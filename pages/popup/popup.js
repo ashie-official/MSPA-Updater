@@ -170,7 +170,7 @@ async function updateMiniView(state) {
       titleText: 'Homestuck', 
       baseUrl: 'https://www.homestuck.com/story/',
       minPage: 1901,
-      defaultSchedulePath: 'schedules/homestuck-default.json'
+      defaultSchedulePath: 'files/scheduleshomestuck-default.json'
     },
     { 
       prefix: 'ps', 
@@ -178,7 +178,7 @@ async function updateMiniView(state) {
       titleText: 'Problem Sleuth', 
       baseUrl: 'https://www.homestuck.com/problemsleuth/',
       minPage: 219,
-      defaultSchedulePath: 'schedules/problemsleuth-default.json'
+      defaultSchedulePath: 'files/schedulesproblemsleuth-default.json'
     }
   ];
 
@@ -374,16 +374,16 @@ document.addEventListener('DOMContentLoaded', () => {
     previewLink.addEventListener('click', (e) => e.preventDefault());
   }
 
-  const openBtn = document.getElementById('openOptionsBtn');
-  if (openBtn) {
-    openBtn.addEventListener('click', (e) => {
+  const promptSettingsLink = document.getElementById('promptSettings');
+  if (promptSettingsLink) {
+    promptSettingsLink.addEventListener('click', (e) => {
       e.preventDefault();
       if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.openOptionsPage) {
         chrome.runtime.openOptionsPage();
       } else if (typeof browser !== 'undefined' && browser.runtime && browser.runtime.openOptionsPage) {
         browser.runtime.openOptionsPage();
       } else {
-        window.open('options.html');
+        window.open('pages/options/options.html');
       }
     });
   }

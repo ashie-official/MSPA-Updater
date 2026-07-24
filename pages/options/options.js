@@ -170,7 +170,7 @@ async function updateUI() {
       titleText: 'Homestuck', 
       baseUrl: 'https://www.homestuck.com/',
       minPage: 1901,
-      defaultPath: 'schedules/homestuck-default.json'
+      defaultPath: 'files/scheduleshomestuck-default.json'
     },
     { 
       prefix: 'ps', 
@@ -178,7 +178,7 @@ async function updateUI() {
       titleText: 'Problem Sleuth', 
       baseUrl: 'https://www.homestuck.com/problemsleuth/',
       minPage: 219,
-      defaultPath: 'schedules/problemsleuth-default.json'
+      defaultPath: 'files/schedulesproblemsleuth-default.json'
     }
   ];
 
@@ -448,14 +448,14 @@ async function downloadActiveSchedule(story) {
     case 'homestuck':
        task = {
         key: 'homestuck',
-        defaultPath: 'schedules/homestuck-default.json',
+        defaultPath: 'files/scheduleshomestuck-default.json',
         fallbackName: 'homestuck-custom.json'
       };
       break;
     case 'problemSleuth':
        task = {
         key: 'problemSleuth',
-        defaultPath: 'schedules/problemsleuth-default.json',
+        defaultPath: 'files/schedulesproblemsleuth-default.json',
         fallbackName: 'problemsleuth-custom.json'
       };
       break;
@@ -676,17 +676,17 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Bind Download Schedules Link
-  const downloadHsScheduleLink = document.getElementById('promptDownloadHsSchedule');
-  if (downloadHsScheduleLink) {
-    downloadHsScheduleLink.addEventListener('click', (e) => {
+  const promptDownloadHsSchedule = document.getElementById('promptDownloadHsSchedule');
+  if (promptDownloadHsSchedule) {
+    promptDownloadHsSchedule.addEventListener('click', (e) => {
       e.preventDefault();
       downloadActiveSchedule('homestuck');
     });
   }
 
-  const downloadPsScheduleLink = document.getElementById('promptDownloadPsSchedule');
-  if (downloadPsScheduleLink) {
-    downloadPsScheduleLink.addEventListener('click', (e) => {
+  const promptDownloadPsSchedule = document.getElementById('promptDownloadPsSchedule');
+  if (promptDownloadPsSchedule) {
+    promptDownloadPsSchedule.addEventListener('click', (e) => {
       e.preventDefault();
       downloadActiveSchedule('problemSleuth');
     });

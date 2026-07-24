@@ -33,27 +33,27 @@
     "web_accessible_resources": [
         {
         "resources": [
-            "schedules/homestuck-default.json",
-            "schedules/problemsleuth-default.json"
+            "files/scheduleshomestuck-default.json",
+            "files/schedulesproblemsleuth-default.json"
         ],
         "matches": ["https://*.homestuck.com/*"]
         }
     ],
     "options_ui": {
-        "page": "options.html",
+        "page": "pages/options/options.html",
         "open_in_tab": true
     },
 
     "action": {
         "default_icon": {
-        "16": "images/extension-icons/mspa16.png",
-        "32": "images/extension-icons/mspa32.png"
+        "16": "files/images/extension-icons/mspa16.png",
+        "32": "files/images/extension-icons/mspa32.png"
         },
-        "default_popup": "popup.html"
+        "default_popup": "pages/popup/popup.html"
     },
     "icons": {
-        "16": "images/extension-icons/mspa16.png",
-        "48": "images/extension-icons/mspa48.png",
-        "128": "images/extension-icons/mspa128.png"
+        "16": "files/images/extension-icons/mspa16.png",
+        "48": "files/images/extension-icons/mspa48.png",
+        "128": "files/images/extension-icons/mspa128.png"
     }
 }
