@@ -374,16 +374,16 @@ document.addEventListener('DOMContentLoaded', () => {
     previewLink.addEventListener('click', (e) => e.preventDefault());
   }
 
-  const promptSettingsLink = document.getElementById('promptSettings');
-  if (promptSettingsLink) {
-    promptSettingsLink.addEventListener('click', (e) => {
+  const promptSettings = document.getElementById('promptSettings');
+  if (promptSettings) {
+    promptSettings.addEventListener('click', (e) => {
       e.preventDefault();
       if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.openOptionsPage) {
         chrome.runtime.openOptionsPage();
       } else if (typeof browser !== 'undefined' && browser.runtime && browser.runtime.openOptionsPage) {
         browser.runtime.openOptionsPage();
       } else {
-        window.open('pages/options/options.html');
+        window.open('/pages/settings/settings.html');
       }
     });
   }

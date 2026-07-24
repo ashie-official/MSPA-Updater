@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MSPA Updater Options</title>
+  
+  <!-- Local Bootstrap CSS -->
+  <link rel="stylesheet" href="/data/css/bootstrap.min.css">
+  
+  <style>
+    /* ==========================================================================
+       1. Base Layout & MSPA Panel Container
+       ========================================================================== */
+    body {
+        background-color: #535353;
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+    }
+
+    .mspa-container {
+        background-color: #efefef;
+        font-family: "Courier New", Courier, monospace;
+        width: 100%;
+        max-width: 850px; 
+        min-height: 100vh;
+        padding: 20px 40px 40px 40px;
+        box-sizing: border-box;
+        border-left: 10px solid #cccccc;
+        border-right: 10px solid #cccccc;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .header-section {
+        position: relative;
+    }
+
+    .header-author {
+        font-family: 'Lexend', Geneva, Tahoma, sans-serif !important;
+        color: #919191;
+        text-align: center;
+        font-size: 1.1rem !important;
+    }
+
+    .author-link {
+        color: #2d9dff;
+        text-decoration: underline;
+    }
+
+    .author-link:hover {
+        color: #435fbb;
+    }
+
+    /* Typography Enforcement */
+    label, h1, h2, h3, h4, .comic-title {
+        white-space: nowrap !important;
+    }
+
+    .btn, label, select,
+    [id*="Download"], [class*="download"],
+    .preview-container, .preview-prompt, .preview-link, .preview-arrow {
+        font-family: 'Verdana', Geneva, Tahoma, sans-serif !important;
+    }
+
+    /* ==========================================================================
+       2. Settings Dropdowns & Controls Stack
+       ========================================================================== */
+    .mspa-container > .row,
+    .mspa-container > .settings-stack {
+        width: 100% !important;
+    }
+
+    .settings-stack {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        gap: 25px;
+    }
+
+    .setting-item {
+        width: 100%;
+        max-width: 50%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    select {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    /* Dynamic Preview Styles */
+    .preview-container {
+        width: 100%;
+        margin-bottom: 12px;
+        font-size: 0.95rem;
+    }
+
+    .preview-label {
+        font-weight: bold;
+        color: #919191;
+        margin-bottom: 4px;
+    }
+
+    .preview-prompt {
+        font-size: 1.1rem;
+    }
+
+    .preview-arrow {
+        color: #000000;
+        margin-right: 4px;
+    }
+
+    .preview-link {
+        color: #0000ff;
+        text-decoration: underline;
+        display: inline-block;
+        transition: filter 0.15s ease, opacity 0.15s ease;
+    }
+    
+    /* ==========================================================================
+       3. Game Panels & Status Bubbles
+       ========================================================================== */
+    .comic-icon {
+        width: 164px;
+        height: 164px;
+        object-fit: cover;
+    }
+
+    .status-bubble {
+        font-size: 1.25rem;
+        font-weight: bold;
+        padding: 15px;
+        border-radius: 10px;
+        text-align: center;
+        width: 100%;
+        max-width: 320px;
+        color: white;
+        transition: background-color 0.7s ease;
+        
+        /* Text fitting controls for long schedule filenames */
+        word-break: break-word;
+        overflow-wrap: break-word;
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 60px;
+    }
+
+    .bubble-not-started { background-color: #6c757d; }
+    .bubble-started     { background-color: #2ECC71; }
+    .bubble-default-sched { background-color: #2d9dff; }
+    .bubble-custom-sched  { background-color: #ba55d3; }
+
+    /* Homestuck Command Prompt Link */
+    .prompt-group {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start; /* Aligns all sub-sections & prompts flush left */
+      width: max-content;      /* Fits width to the longest link across ALL sections */
+      margin: 0 auto 1rem auto;
+      padding-top: 2rem;
+    }
+
+    .prompt-section {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      width: 100%;
+    }
+    /* Adds the gap/spacer between the two prompt sections */
+    .prompt-section:not(:last-child) {
+      margin-bottom: 1.75rem; /* Adjust this value for more/less space between groups */
+    }
+
+    .prompt-item {
+      width: 100%;
+      text-align: left;
+      padding-top: 0rem;   /* Equivalent to pt-2 */
+      /* margin-top: 0.5rem;    Equivalent to mt-2 */
+      /* border-top: 1px solid #dee2e6; Standard Bootstrap border-top color */
+    }
+
+    .prompt-arrow {
+      font-family: 'Verdana', Geneva, Tahoma, sans-serif !important;
+      color: #000000;
+      font-size: 1.5rem;
+    }
+
+    .prompt-link {
+      font-family: 'Verdana', Geneva, Tahoma, sans-serif !important;
+      font-size: 1.5rem;
+      color: #0000FF;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
+    .download-section {
+        font-size: 1.25rem;
+    }
+
+    /* Utility helper to hide controls completely */
+    .d-none-important {
+        display: none !important;
+    }
+
+    .some-bullshit {
+        font-family: 'Comic Sans MS', sans-serif;
+        font-size: 6rem;
+        color: #2D9DFF;
+    }
+
+  </style>
+</head>
+<body>
+
+  <div class="mspa-container">
+    
+    <!-- Header Section -->
+    <div class="header-section pb-2 mb-3 border-bottom">
+      <h1 class="display-4 fw-bold">MSPA Updater</h1>
+      <div class="header-author fs-6">
+        by <a href="https://github.com/ashie-official/MSPA-Updater" target="_blank" rel="noopener noreferrer" class="author-link">ashiepeace</a>
+      </div>
+    </div>
+
+
+
+
+    <div class="some-bullshit">
+      "work in progress..."
+    </div>
+
+
+
+
+
+    <!-- Footer -->
+    <div class="prompt-group">
+      <div class="prompt-section">
+        <div class="prompt-item">
+          <span class="prompt-arrow">></span>
+          <a href="#" id="promptSettings" class="prompt-link">
+            User: Return to settings.
+          </a>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script src="ical-maker.js" defer></script>
+</body>
+</html>

@@ -40,7 +40,7 @@
         }
     ],
     "options_ui": {
-        "page": "pages/options/options.html",
+        "page": "/pages/settings/settings.html",
         "open_in_tab": true
     },
 
@@ -49,7 +49,7 @@
         "16": "/data/images/extension-icons/mspa16.png",
         "32": "/data/images/extension-icons/mspa32.png"
         },
-        "default_popup": "pages/popup/popup.html"
+        "default_popup": "/pages/popup/popup.html"
     },
     "icons": {
         "16": "/data/images/extension-icons/mspa16.png",
