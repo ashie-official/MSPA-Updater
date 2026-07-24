@@ -168,7 +168,7 @@ async function updateUI() {
       prefix: 'hs', 
       key: 'homestuck', 
       titleText: 'Homestuck', 
-      baseUrl: 'https://www.homestuck.com/story/',
+      baseUrl: 'https://www.homestuck.com/',
       minPage: 1901,
       defaultPath: 'schedules/homestuck-default.json'
     },
@@ -442,35 +442,40 @@ async function fetchDefaultSchedule(path) {
   }
 }
 
-async function downloadActiveSchedules() {
-  const downloadTasks = [
-    {
-      key: 'homestuck',
-      defaultPath: 'schedules/homestuck-default.json',
-      fallbackName: 'homestuck-custom.json'
-    },
-    {
-      key: 'problemSleuth',
-      defaultPath: 'schedules/problemsleuth-default.json',
-      fallbackName: 'problemsleuth-custom.json'
-    }
-  ];
+async function downloadActiveSchedule(story) {
+  let task;
+  switch (story) {
+    case 'homestuck':
+       task = {
+        key: 'homestuck',
+        defaultPath: 'schedules/homestuck-default.json',
+        fallbackName: 'homestuck-custom.json'
+      };
+      break;
+    case 'problemSleuth':
+       task = {
+        key: 'problemSleuth',
+        defaultPath: 'schedules/problemsleuth-default.json',
+        fallbackName: 'problemsleuth-custom.json'
+      };
+      break;
+    default:
+      return null;
+      break;
+  }
+  const comicState = STATE[task.key];
 
-  for (const task of downloadTasks) {
-    const comicState = STATE[task.key];
-
-    if (comicState.customSchedule && comicState.scheduleData) {
-      // Download Custom Schedule from state memory
-      const jsonStr = JSON.stringify(comicState.scheduleData, null, 2);
-      const downloadName = comicState.fileName || task.fallbackName;
-      triggerFileDownload(downloadName, jsonStr);
-    } else {
-      // Download Default Schedule from schedules/ directory
-      const defaultContent = await fetchDefaultSchedule(task.defaultPath);
-      if (defaultContent) {
-        const defaultFilename = task.defaultPath.split('/').pop();
-        triggerFileDownload(defaultFilename, defaultContent);
-      }
+  if (comicState.customSchedule && comicState.scheduleData) {
+    // Download Custom Schedule from state memory
+    const jsonStr = JSON.stringify(comicState.scheduleData, null, 2);
+    const downloadName = comicState.fileName || task.fallbackName;
+    triggerFileDownload(downloadName, jsonStr);
+  } else {
+    // Download Default Schedule from schedules/ directory
+    const defaultContent = await fetchDefaultSchedule(task.defaultPath);
+    if (defaultContent) {
+      const defaultFilename = task.defaultPath.split('/').pop();
+      triggerFileDownload(defaultFilename, defaultContent);
     }
   }
 }
@@ -671,11 +676,19 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Bind Download Schedules Link
-  const downloadLink = document.getElementById('downloadSchedulesBtn');
-  if (downloadLink) {
-    downloadLink.addEventListener('click', (e) => {
+  const downloadHsScheduleLink = document.getElementById('promptDownloadHsSchedule');
+  if (downloadHsScheduleLink) {
+    downloadHsScheduleLink.addEventListener('click', (e) => {
       e.preventDefault();
-      downloadActiveSchedules();
+      downloadActiveSchedule('homestuck');
+    });
+  }
+
+  const downloadPsScheduleLink = document.getElementById('promptDownloadPsSchedule');
+  if (downloadPsScheduleLink) {
+    downloadPsScheduleLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      downloadActiveSchedule('problemSleuth');
     });
   }
 

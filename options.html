@@ -160,13 +160,41 @@
     .bubble-custom-sched  { background-color: #ba55d3; }
 
     /* Homestuck Command Prompt Link */
-    .button-prompt-arrow {
+    .prompt-group {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start; /* Aligns all sub-sections & prompts flush left */
+      width: max-content;      /* Fits width to the longest link across ALL sections */
+      margin: 0 auto 1rem auto;
+      padding-top: 2rem;
+    }
+
+    .prompt-section {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      width: 100%;
+    }
+    /* Adds the gap/spacer between the two prompt sections */
+    .prompt-section:not(:last-child) {
+      margin-bottom: 1.75rem; /* Adjust this value for more/less space between groups */
+    }
+
+    .prompt-item {
+      width: 100%;
+      text-align: left;
+      padding-top: 0rem;   /* Equivalent to pt-2 */
+      /* margin-top: 0.5rem;    Equivalent to mt-2 */
+      /* border-top: 1px solid #dee2e6; Standard Bootstrap border-top color */
+    }
+
+    .prompt-arrow {
       font-family: 'Verdana', Geneva, Tahoma, sans-serif !important;
       color: #000000;
       font-size: 1.5rem;
     }
 
-    .button-prompt-link {
+    .prompt-link {
       font-family: 'Verdana', Geneva, Tahoma, sans-serif !important;
       font-size: 1.5rem;
       color: #0000FF;
@@ -332,11 +360,51 @@
     </div>
 
     <!-- Footer -->
-    <div class="w-100 text-center pt-2 mt-2 border-top">
-      <span class="button-prompt-arrow">></span>
-      <a href="#" id="downloadSchedulesBtn" class="button-prompt-link">
-        User: Download current schedules.
-      </a>
+    <div class="prompt-group">
+
+      <div class="prompt-section">
+
+        <div class="prompt-item">
+          <span class="prompt-arrow">></span>
+          <a href="#" id="promptDownloadHsSchedule" class="prompt-link">
+            User: Download current Homestuck schedule (.json).
+          </a>
+        </div>
+
+        <div class="prompt-item">
+          <span class="prompt-arrow">></span>
+          <a href="#" id="promptDownloadPsSchedule" class="prompt-link">
+            User: Download current Problem Sleuth schedule (.json).
+          </a>
+        </div>
+
+      </div>
+
+      <div class="prompt-section">
+
+        <div class="prompt-item">
+          <span class="prompt-arrow">></span>
+          <a href="#" id="promptICalMaker" class="prompt-link">
+            User: Open iCal maker.
+          </a>
+        </div>
+
+        <div class="prompt-item">
+          <span class="prompt-arrow">></span>
+          <a href="#" id="promptDownloadHsLog" class="prompt-link">
+            User: Download Homestuck log (.csv).
+          </a>
+        </div>
+
+        <div class="prompt-item">
+          <span class="prompt-arrow">></span>
+          <a href="#" id="promptDownloadPsLog" class="prompt-link">
+            User: Download Problem Sleuth log (.csv).
+          </a>
+        </div>
+
+      </div>
+
     </div>
 
   </div>
