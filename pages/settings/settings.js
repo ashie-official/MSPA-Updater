@@ -13,7 +13,6 @@ function getExtensionStorage() {
 
 const extensionStorage = getExtensionStorage();
 
-// State Management Container
 const STATE = {
   settings: {
     dateFormat: 'default',
@@ -26,7 +25,7 @@ const STATE = {
     fileName: null,
     scheduleData: null
   },
-  problemSleuth: {
+  problemsleuth: {
     startDate: null,
     customSchedule: false,
     fileName: null,
@@ -106,14 +105,17 @@ function getUpdateFirstPage(scheduleData, daysElapsed, defaultMinPage) {
   return previousTierLastPage + 1;
 }
 
-// Helper to fetch default schedule JSON when custom schedule is not uploaded
-async function fetchDefaultScheduleJson(path) {
+// Helper to fetch a path
+async function fetchPath(path) {
   try {
     const response = await fetch(path);
-    if (!response.ok) return null;
-    return await response.json();
+    if (!response.ok) {
+      console.log('NULL')
+      return null;
+    }
+    return await response;
   } catch (err) {
-    console.error(`Failed to fetch default JSON schedule at ${path}:`, err);
+    console.error(`Failed to fetch path at ${path}:`, err);
     return null;
   }
 }
@@ -174,7 +176,7 @@ async function updateUI() {
     },
     { 
       prefix: 'ps', 
-      key: 'problemSleuth', 
+      key: 'problemsleuth', 
       titleText: 'Problem Sleuth', 
       baseUrl: 'https://www.homestuck.com/problemsleuth/',
       minPage: 219,
@@ -201,7 +203,7 @@ async function updateUI() {
         // Load custom schedule if present, otherwise fetch default schedule JSON
         let schedule = comicState.scheduleData;
         if (!schedule) {
-          schedule = await fetchDefaultScheduleJson(defaultPath);
+          schedule = await fetchPath(defaultPath).json();
         }
 
         const firstPage = getUpdateFirstPage(schedule, daysElapsed, minPage);
@@ -264,10 +266,10 @@ async function updateUI() {
   }
 
   updateDropdownOrder();
-  updateUnreleasedPreview();
+  updatePreview();
 }
 
-function updateUnreleasedPreview() {
+function updatePreview() {
   const behavior = STATE.settings.unreleasedBehavior || 'blur';
   const promptEl = document.querySelector('.preview-prompt');
   const arrowEl = document.querySelector('.preview-arrow');
@@ -408,8 +410,8 @@ function processStorageData(result) {
     STATE.homestuck.scheduleData = result.hsCustomSchedule;
   }
   if (result && result.psCustomSchedule) {
-    STATE.problemSleuth.customSchedule = true;
-    STATE.problemSleuth.scheduleData = result.psCustomSchedule;
+    STATE.problemsleuth.customSchedule = true;
+    STATE.problemsleuth.scheduleData = result.psCustomSchedule;
   }
 
   updateUI();
@@ -419,8 +421,20 @@ function processStorageData(result) {
 // 3. Dynamic Schedule Downloader Module
 // ==========================================================================
 
-function triggerFileDownload(filename, contentString) {
-  const blob = new Blob([contentString], { type: 'application/json' });
+function triggerFileDownload(filename, contentString, format) {
+  let blobType;
+  switch (format) {
+    case 'json':
+      blobType = 'application/json'
+      break;
+    case 'csv':
+      blobType = 'text/csv'
+      break;
+    default:
+      return null;
+  }
+
+  const blob = new Blob([contentString], { type: blobType });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -431,32 +445,21 @@ function triggerFileDownload(filename, contentString) {
   URL.revokeObjectURL(url);
 }
 
-async function fetchDefaultSchedule(path) {
-  try {
-    const response = await fetch(path);
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    return await response.text();
-  } catch (err) {
-    console.error(`Failed to fetch default schedule at ${path}:`, err);
-    return null;
-  }
-}
-
 async function downloadActiveSchedule(story) {
   let task;
   switch (story) {
     case 'homestuck':
        task = {
         key: 'homestuck',
-        defaultPath: '/data/scheduleshomestuck-default.json',
-        fallbackName: 'homestuck-custom.json'
+        defaultPath: '/data/schedules/homestuck-default.json',
+        fallbackName: 'homestuck-default.json'
       };
       break;
-    case 'problemSleuth':
+    case 'problemsleuth':
        task = {
-        key: 'problemSleuth',
-        defaultPath: '/data/schedulesproblemsleuth-default.json',
-        fallbackName: 'problemsleuth-custom.json'
+        key: 'problemsleuth',
+        defaultPath: '/data/schedules/problemsleuth-default.json',
+        fallbackName: 'problemsleuth-default.json'
       };
       break;
     default:
@@ -469,16 +472,39 @@ async function downloadActiveSchedule(story) {
     // Download Custom Schedule from state memory
     const jsonStr = JSON.stringify(comicState.scheduleData, null, 2);
     const downloadName = comicState.fileName || task.fallbackName;
-    triggerFileDownload(downloadName, jsonStr);
+    triggerFileDownload(downloadName, jsonStr, 'json');
   } else {
     // Download Default Schedule from schedules/ directory
-    const defaultContent = await fetchDefaultSchedule(task.defaultPath);
+    const defaultContent = await (await fetchPath(task.defaultPath)).text();
     if (defaultContent) {
       const defaultFilename = task.defaultPath.split('/').pop();
-      triggerFileDownload(defaultFilename, defaultContent);
+      triggerFileDownload(defaultFilename, defaultContent, 'json');
     }
   }
 }
+
+async function downloadStoryCsv(story) {
+  let path;
+  switch (story) {
+    case 'homestuck':
+      path = '/data/schedules/homestuck-log.csv';
+      break;
+    case 'problemsleuth':
+      path = '/data/schedules/problemsleuth-log.csv';
+      break;
+    default:
+      return null;
+      break;
+  }
+
+  const content = await (await fetchPath(path)).text(); //????
+  if (content) {
+    const filename = path.split('/').pop();
+    triggerFileDownload(filename, content, 'csv');
+  }
+}
+
+
 
 // ==========================================================================
 // 4. Schedule Validation Logic
@@ -688,15 +714,34 @@ document.addEventListener('DOMContentLoaded', () => {
   if (promptDownloadPsSchedule) {
     promptDownloadPsSchedule.addEventListener('click', (e) => {
       e.preventDefault();
-      downloadActiveSchedule('problemSleuth');
+      downloadActiveSchedule('problemsleuth');
     });
   }
-
+  
+  // Open iCal Maker
   const promptICalMaker = document.getElementById('promptICalMaker');
   if (promptICalMaker) {
     promptICalMaker.addEventListener('click', (e) => {
       e.preventDefault();
       window.location.href = '/pages/ical-maker/ical-maker.html';
+    });
+  }
+
+
+  // Download CSVs
+  const promptDownloadHsCsv = document.getElementById('promptDownloadHsCsv');
+  if (promptDownloadHsCsv) {
+    promptDownloadHsCsv.addEventListener('click', (e) => {
+      e.preventDefault();
+      downloadStoryCsv('homestuck');
+    });
+  }
+
+  const promptDownloadPsCsv = document.getElementById('promptDownloadPsCsv');
+  if (promptDownloadPsCsv) {
+    promptDownloadPsCsv.addEventListener('click', (e) => {
+      e.preventDefault();
+      downloadStoryCsv('problemsleuth');
     });
   }
 
@@ -717,7 +762,7 @@ document.addEventListener('DOMContentLoaded', () => {
     unreleasedEl.addEventListener('change', (e) => {
       STATE.settings.unreleasedBehavior = e.target.value;
       saveToStorage();
-      updateUnreleasedPreview();
+      updatePreview();
     });
   }
 
@@ -730,7 +775,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Bind date control fields
   setupComicControls('hs', 'homestuck');
-  setupComicControls('ps', 'problemSleuth');
+  setupComicControls('ps', 'problemsleuth');
 
   // Bind schedule uploaders
   setupScheduleUploader({
@@ -749,7 +794,7 @@ document.addEventListener('DOMContentLoaded', () => {
     bubbleId: 'psSchedBubble',
     msgId: 'psSchedMsg',
     expectedStory: 'problemsleuth',
-    comicKey: 'problemSleuth',
+    comicKey: 'problemsleuth',
     storageKey: 'psCustomSchedule'
   });
 
