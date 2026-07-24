@@ -36,7 +36,10 @@
             "/data/scheduleshomestuck-default.json",
             "/data/schedulesproblemsleuth-default.json"
         ],
-        "matches": ["https://*.homestuck.com/*"]
+        "matches": [
+            "*://*.homestuck.com/*",
+            "*://homestuck.com/*"
+        ]
         }
     ],
     "options_ui": {
