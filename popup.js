@@ -69,36 +69,155 @@ function formatDate(dateString, format) {
   }
 }
 
+function isLeapYear(year) {
+  return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+}
+
+function calculateNonLeapElapsedDays(startDateStr) {
+  if (!startDateStr) return null;
+  const parts = startDateStr.split('-');
+  if (parts.length !== 3) return null;
+
+  const startYear = parseInt(parts[0], 10);
+  const startMonth = parseInt(parts[1], 10) - 1;
+  const startDay = parseInt(parts[2], 10);
+
+  let start = new Date(startYear, startMonth, startDay);
+  let today = new Date();
+  today = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+  if (start > today) return -1;
+
+  let elapsedDays = 0;
+  let curr = new Date(start.getTime());
+
+  while (curr < today) {
+    curr.setDate(curr.getDate() + 1);
+    if (curr.getMonth() === 1 && curr.getDate() === 29 && isLeapYear(curr.getFullYear())) {
+      continue;
+    }
+    elapsedDays++;
+  }
+
+  return elapsedDays;
+}
+
+function padPageNumber(pageNum) {
+  return String(pageNum).padStart(6, '0');
+}
+
+function getUpdateFirstPage(scheduleData, daysElapsed, defaultMinPage) {
+  if (!scheduleData || !Array.isArray(scheduleData.data) || daysElapsed === null || daysElapsed < 0) {
+    return null;
+  }
+
+  const data = scheduleData.data;
+  let currentTierIndex = -1;
+
+  for (let i = 0; i < data.length; i++) {
+    const entry = data[i];
+    if (Array.isArray(entry) && entry.length === 2) {
+      const [reqDays] = entry;
+      if (daysElapsed >= reqDays) {
+        currentTierIndex = i;
+      } else {
+        break;
+      }
+    }
+  }
+
+  if (currentTierIndex === -1) return null;
+
+  if (currentTierIndex === 0) {
+    return defaultMinPage;
+  }
+
+  const previousTierLastPage = data[currentTierIndex - 1][1];
+  return previousTierLastPage + 1;
+}
+
+async function fetchDefaultSchedule(path) {
+  try {
+    const response = await fetch(path);
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (err) {
+    console.error(`Failed to load default schedule at ${path}:`, err);
+    return null;
+  }
+}
+
 // ==========================================================================
 // 3. UI Syncing Engine
 // ==========================================================================
-// Dynamic font resizing helper to prevent text wrapping inside fixed-width bubbles
 function adjustBubbleFontSize(bubbleEl, text) {
   bubbleEl.textContent = text;
   
-  // Start at standard font size (0.8rem matches options menu)
   let fontSize = 0.8;
   bubbleEl.style.fontSize = `${fontSize}rem`;
 
-  // Scale down font size incrementally if scroll width exceeds client width
   while (bubbleEl.scrollWidth > bubbleEl.clientWidth && fontSize > 0.5) {
     fontSize -= 0.03;
     bubbleEl.style.fontSize = `${fontSize}rem`;
   }
 }
 
-function updateMiniView(state) {
+async function updateMiniView(state) {
   const comics = [
-    { prefix: 'hs', key: 'homestuck' },
-    { prefix: 'ps', key: 'problemSleuth' }
+    { 
+      prefix: 'hs', 
+      key: 'homestuck', 
+      titleText: 'Homestuck', 
+      baseUrl: 'https://www.homestuck.com/story/',
+      minPage: 1901,
+      defaultSchedulePath: 'schedules/homestuck-default.json'
+    },
+    { 
+      prefix: 'ps', 
+      key: 'problemSleuth', 
+      titleText: 'Problem Sleuth', 
+      baseUrl: 'https://www.homestuck.com/problemsleuth/',
+      minPage: 219,
+      defaultSchedulePath: 'schedules/problemsleuth-default.json'
+    }
   ];
 
-  comics.forEach(({ prefix, key }) => {
+  for (const { prefix, key, titleText, baseUrl, minPage, defaultSchedulePath } of comics) {
     const comicState = state[key] || {};
+    const titleEl = document.getElementById(`${prefix}Title`);
     const dateBubble = document.getElementById(`${prefix}DateBubble`);
     const schedBubble = document.getElementById(`${prefix}SchedBubble`);
 
-    // 1. Sync Date Status & Scale Font
+    // ----------------------------------------------------------------------
+    // 1. Dynamic Title Link Logic
+    // ----------------------------------------------------------------------
+    if (titleEl) {
+      const daysElapsed = calculateNonLeapElapsedDays(comicState.startDate);
+
+      if (comicState.startDate && daysElapsed !== null && daysElapsed >= 0) {
+        // Use custom schedule if stored in state, otherwise fetch default schedule JSON
+        let schedule = comicState.scheduleData;
+        if (!schedule) {
+          schedule = await fetchDefaultSchedule(defaultSchedulePath);
+        }
+
+        const firstPage = getUpdateFirstPage(schedule, daysElapsed, minPage);
+
+        if (firstPage) {
+          const paddedPage = padPageNumber(firstPage);
+          const targetUrl = `${baseUrl}${paddedPage}`;
+          titleEl.innerHTML = `<a href="${targetUrl}" target="_blank" class="comic-title-link">${titleText}</a>`;
+        } else {
+          titleEl.textContent = titleText;
+        }
+      } else {
+        titleEl.textContent = titleText;
+      }
+    }
+
+    // ----------------------------------------------------------------------
+    // 2. Sync Date Status & Scale Font
+    // ----------------------------------------------------------------------
     if (dateBubble) {
       const dateText = comicState.startDate 
         ? `Started ${formatDate(comicState.startDate, state.settings?.dateFormat)}` 
@@ -111,7 +230,9 @@ function updateMiniView(state) {
       adjustBubbleFontSize(dateBubble, dateText);
     }
 
-    // 2. Sync Schedule Status & Scale Font
+    // ----------------------------------------------------------------------
+    // 3. Sync Schedule Status & Scale Font
+    // ----------------------------------------------------------------------
     if (schedBubble) {
       let schedText = 'Using Default Schedule';
       if (comicState.customSchedule) {
@@ -125,21 +246,50 @@ function updateMiniView(state) {
 
       adjustBubbleFontSize(schedBubble, schedText);
     }
-  });
+  }
 
-  // Re-run unreleased preview update whenever view updates
   updateUnreleasedPreview();
 }
 
-// Reused exact logic from options.js for unreleased updates behavior preview
 function updateUnreleasedPreview() {
-  const select = document.getElementById('unreleasedBehavior');
-  const link = document.getElementById('previewLink');
-  if (!select || !link) return;
+  const behavior = STATE.settings.unreleasedBehavior || 'blur';
+  const promptEl = document.querySelector('.preview-prompt');
+  const arrowEl = document.querySelector('.preview-arrow');
+  const linkEl = document.getElementById('previewLink');
 
-  link.className = 'preview-link';
-  if (select.value === 'blur') link.classList.add('preview-blur');
-  else if (select.value === 'hide') link.classList.add('preview-hide');
+  if (!promptEl || !arrowEl || !linkEl) return;
+
+  // Reset display and filter
+  linkEl.style.display = '';
+  linkEl.style.filter = '';
+
+  switch (behavior) {
+    case 'blur':
+      arrowEl.style.visibility = 'visible';
+      linkEl.style.visibility = 'visible';
+      linkEl.style.filter = 'blur(5px)';
+      linkEl.style.pointerEvents = 'none';
+      linkEl.style.userSelect = 'none';
+      linkEl.setAttribute('tabindex', '-1');
+      break;
+
+    case 'hide':
+      arrowEl.style.visibility = 'visible';
+      linkEl.style.display = 'none';
+      break;
+
+    case 'hide-all':
+      // Hides both arrow and link while preserving layout space
+      arrowEl.style.visibility = 'hidden';
+      linkEl.style.visibility = 'hidden';
+      break;
+
+    case 'none':
+    default:
+      arrowEl.style.visibility = 'visible';
+      linkEl.style.visibility = 'visible';
+      break;
+  }
 }
 
 function syncDropdowns() {
@@ -163,14 +313,12 @@ function loadSettingsAndRender() {
   if (storage) {
     const keys = ['mspaState', 'hsCustomSchedule', 'psCustomSchedule'];
     
-    // Support Firefox (Promises) and Chrome (Callbacks)
     if (typeof browser !== 'undefined' && browser.storage) {
       storage.get(keys).then(processStorage);
     } else {
       storage.get(keys, processStorage);
     }
   } else {
-    // LocalStorage Fallback
     const saved = localStorage.getItem('mspaState');
     if (saved) {
       Object.assign(STATE, JSON.parse(saved));
@@ -188,9 +336,11 @@ function processStorage(result) {
 
   if (result && result.hsCustomSchedule) {
     STATE.homestuck.customSchedule = true;
+    STATE.homestuck.scheduleData = result.hsCustomSchedule;
   }
   if (result && result.psCustomSchedule) {
     STATE.problemSleuth.customSchedule = true;
+    STATE.problemSleuth.scheduleData = result.psCustomSchedule;
   }
 
   updateMiniView(STATE);
@@ -200,10 +350,8 @@ function processStorage(result) {
 // 5. Initialization
 // ==========================================================================
 document.addEventListener('DOMContentLoaded', () => {
-  // Load state and populate popup UI
   loadSettingsAndRender();
 
-  // Bind unreleased updates dropdown if present
   const unreleasedEl = document.getElementById('unreleasedBehavior');
   if (unreleasedEl) {
     unreleasedEl.addEventListener('change', (e) => {
@@ -213,7 +361,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Bind password prompts dropdown
   const passwordEl = document.getElementById('passwordBehavior');
   if (passwordEl) {
     passwordEl.addEventListener('change', (e) => {
@@ -222,13 +369,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Safely prevent preview link click navigation if present
   const previewLink = document.getElementById('previewLink');
   if (previewLink) {
     previewLink.addEventListener('click', (e) => e.preventDefault());
   }
 
-  // Bind Open Settings Button
   const openBtn = document.getElementById('openOptionsBtn');
   if (openBtn) {
     openBtn.addEventListener('click', (e) => {

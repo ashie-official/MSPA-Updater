@@ -1,5 +1,5 @@
 // ==========================================================================
-// 0. Cross-Browser API Initialization
+// 0. Cross-Browser API Initialization & Helper Functions
 // ==========================================================================
 function getExtensionStorage() {
   if (typeof browser !== 'undefined' && browser.storage) {
@@ -33,6 +33,90 @@ const STATE = {
     scheduleData: null
   }
 };
+
+function isLeapYear(year) {
+  return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+}
+
+function calculateNonLeapElapsedDays(startDateStr) {
+  if (!startDateStr) return null;
+  const parts = startDateStr.split('-');
+  if (parts.length !== 3) return null;
+
+  const startYear = parseInt(parts[0], 10);
+  const startMonth = parseInt(parts[1], 10) - 1; 
+  const startDay = parseInt(parts[2], 10);
+
+  let start = new Date(startYear, startMonth, startDay);
+  let today = new Date();
+  today = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+  if (start > today) return -1;
+
+  let elapsedDays = 0;
+  let curr = new Date(start.getTime());
+
+  while (curr < today) {
+    curr.setDate(curr.getDate() + 1);
+    if (curr.getMonth() === 1 && curr.getDate() === 29 && isLeapYear(curr.getFullYear())) {
+      continue;
+    }
+    elapsedDays++;
+  }
+
+  return elapsedDays;
+}
+
+// Zero-pads page numbers to 6 digits (e.g., 219 -> "000219")
+function padPageNumber(pageNum) {
+  return String(pageNum).padStart(6, '0');
+}
+
+// Finds the FIRST page of the current unlocked update tier
+function getUpdateFirstPage(scheduleData, daysElapsed, defaultMinPage) {
+  if (!scheduleData || !Array.isArray(scheduleData.data) || daysElapsed === null || daysElapsed < 0) {
+    return null;
+  }
+
+  const data = scheduleData.data;
+  let currentTierIndex = -1;
+
+  // Find the highest tier the user has reached based on days elapsed
+  for (let i = 0; i < data.length; i++) {
+    const entry = data[i];
+    if (Array.isArray(entry) && entry.length === 2) {
+      const [reqDays] = entry;
+      if (daysElapsed >= reqDays) {
+        currentTierIndex = i;
+      } else {
+        break; // Tiers are ordered sequentially by days_elapsed
+      }
+    }
+  }
+
+  if (currentTierIndex === -1) return null; // Story hasn't started yet
+
+  // If we're on the very first update tier, start at the default min page (e.g., 1901 or 219)
+  if (currentTierIndex === 0) {
+    return defaultMinPage;
+  }
+
+  // Otherwise, first page of current update = 1 + last page of the PREVIOUS update tier
+  const previousTierLastPage = data[currentTierIndex - 1][1];
+  return previousTierLastPage + 1;
+}
+
+// Helper to fetch default schedule JSON when custom schedule is not uploaded
+async function fetchDefaultScheduleJson(path) {
+  try {
+    const response = await fetch(path);
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (err) {
+    console.error(`Failed to fetch default JSON schedule at ${path}:`, err);
+    return null;
+  }
+}
 
 // ==========================================================================
 // 1. Helper Functions & UI Formatters
@@ -76,22 +160,65 @@ function adjustBubbleFontSize(bubbleEl, text) {
   }
 }
 
-function updateUI() {
+async function updateUI() {
   const format = STATE.settings.dateFormat;
 
   const comics = [
-    { prefix: 'hs', key: 'homestuck' },
-    { prefix: 'ps', key: 'problemSleuth' }
+    { 
+      prefix: 'hs', 
+      key: 'homestuck', 
+      titleText: 'Homestuck', 
+      baseUrl: 'https://www.homestuck.com/story/',
+      minPage: 1901,
+      defaultPath: 'schedules/homestuck-default.json'
+    },
+    { 
+      prefix: 'ps', 
+      key: 'problemSleuth', 
+      titleText: 'Problem Sleuth', 
+      baseUrl: 'https://www.homestuck.com/problemsleuth/',
+      minPage: 219,
+      defaultPath: 'schedules/problemsleuth-default.json'
+    }
   ];
 
-  comics.forEach(({ prefix, key }) => {
+  for (const { prefix, key, titleText, baseUrl, minPage, defaultPath } of comics) {
     const comicState = STATE[key];
     const dateBubble = document.getElementById(`${prefix}DateBubble`);
     const dateBtn = document.getElementById(`${prefix}DateBtn`);
     const dateControls = document.getElementById(`${prefix}DateControls`);
     const schedBubble = document.getElementById(`${prefix}SchedBubble`);
     const schedBtn = document.getElementById(`${prefix}SchedBtn`);
+    const titleEl = document.getElementById(`${prefix}Title`);
 
+    // ----------------------------------------------------------------------
+    // Dynamic Title Link Toggle
+    // ----------------------------------------------------------------------
+    if (titleEl) {
+      const daysElapsed = calculateNonLeapElapsedDays(comicState.startDate);
+
+      if (comicState.startDate && daysElapsed !== null && daysElapsed >= 0) {
+        // Load custom schedule if present, otherwise fetch default schedule JSON
+        let schedule = comicState.scheduleData;
+        if (!schedule) {
+          schedule = await fetchDefaultScheduleJson(defaultPath);
+        }
+
+        const firstPage = getUpdateFirstPage(schedule, daysElapsed, minPage);
+
+        if (firstPage) {
+          const paddedPage = padPageNumber(firstPage);
+          const targetUrl = `${baseUrl}${paddedPage}`;
+          titleEl.innerHTML = `<a href="${targetUrl}" target="_blank" class="comic-title-link">${titleText}</a>`;
+        } else {
+          titleEl.textContent = titleText;
+        }
+      } else {
+        titleEl.textContent = titleText;
+      }
+    }
+
+    // Existing Date Controls UI Logic...
     if (comicState.startDate && dateBubble) {
       dateBubble.textContent = `Started ${formatDate(comicState.startDate, format)}`;
       dateBubble.className = 'status-bubble bubble-started m-auto';
@@ -114,6 +241,7 @@ function updateUI() {
       if (yearEl) yearEl.value = '';
     }
 
+    // Existing Schedule Bubble UI Logic...
     if (schedBubble && schedBtn) {
       if (comicState.customSchedule) {
         const rawName = comicState.fileName || 'Custom';
@@ -133,20 +261,51 @@ function updateUI() {
         schedBtn.className = 'btn btn-outline-dark btn-sm mt-2';
       }
     }
-  });
+  }
 
   updateDropdownOrder();
   updateUnreleasedPreview();
 }
 
 function updateUnreleasedPreview() {
-  const select = document.getElementById('unreleasedBehavior');
-  const link = document.getElementById('previewLink');
-  if (!select || !link) return;
+  const behavior = STATE.settings.unreleasedBehavior || 'blur';
+  const promptEl = document.querySelector('.preview-prompt');
+  const arrowEl = document.querySelector('.preview-arrow');
+  const linkEl = document.getElementById('previewLink');
 
-  link.className = 'preview-link';
-  if (select.value === 'blur') link.classList.add('preview-blur');
-  else if (select.value === 'hide') link.classList.add('preview-hide');
+  if (!promptEl || !arrowEl || !linkEl) return;
+
+  // Reset display and filter
+  linkEl.style.display = '';
+  linkEl.style.filter = '';
+
+  switch (behavior) {
+    case 'blur':
+      arrowEl.style.visibility = 'visible';
+      linkEl.style.visibility = 'visible';
+      linkEl.style.filter = 'blur(5px)';
+      linkEl.style.pointerEvents = 'none';
+      linkEl.style.userSelect = 'none';
+      linkEl.setAttribute('tabindex', '-1');
+      break;
+
+    case 'hide':
+      arrowEl.style.visibility = 'visible';
+      linkEl.style.display = 'none';
+      break;
+
+    case 'hide-all':
+      // Hides both arrow and link while preserving layout space
+      arrowEl.style.visibility = 'hidden';
+      linkEl.style.visibility = 'hidden';
+      break;
+
+    case 'none':
+    default:
+      arrowEl.style.visibility = 'visible';
+      linkEl.style.visibility = 'visible';
+      break;
+  }
 }
 
 function syncDropdowns() {
@@ -512,7 +671,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Bind Download Schedules Link
-  const downloadLink = document.getElementById('downloadSchedules');
+  const downloadLink = document.getElementById('downloadSchedulesBtn');
   if (downloadLink) {
     downloadLink.addEventListener('click', (e) => {
       e.preventDefault();

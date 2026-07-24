@@ -7,10 +7,10 @@ const PASSWORD_PAGES = [9058, 9109, 9135, 9150, 9188, 9204, 9222, 9263];
 // 2. Storage Helper
 // ==========================================================================
 function getExtensionStorage() {
-  if (typeof browser !== 'undefined' && browser.storage) {
+  if (typeof browser !== 'undefined' && browser?.storage?.local) {
     return browser.storage.local;
   }
-  if (typeof chrome !== 'undefined' && chrome.storage) {
+  if (typeof chrome !== 'undefined' && chrome?.storage?.local) {
     return chrome.storage.local;
   }
   return null;
@@ -108,9 +108,9 @@ async function loadActiveSchedule(ctx, customScheduleData) {
   if (customScheduleData) return customScheduleData;
 
   try {
-    const fileUrl = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) 
+    const fileUrl = (typeof chrome !== 'undefined' && chrome.runtime?.getURL) 
       ? chrome.runtime.getURL(ctx.defaultSchedulePath)
-      : (typeof browser !== 'undefined' && browser.runtime ? browser.runtime.getURL(ctx.defaultSchedulePath) : ctx.defaultSchedulePath);
+      : (typeof browser !== 'undefined' && browser.runtime?.getURL ? browser.runtime.getURL(ctx.defaultSchedulePath) : ctx.defaultSchedulePath);
 
     const res = await fetch(fileUrl);
     if (res.ok) return await res.json();
@@ -126,8 +126,15 @@ async function loadActiveSchedule(ctx, customScheduleData) {
 // ==========================================================================
 function findNextPromptLink() {
   try {
+    // Strategy 1: Direct MSPA/Homestuck nav wrapper element
+    const navAnchor = document.querySelector('article div.text-2xl a') || document.querySelector('div.text-2xl a');
+    if (navAnchor && navAnchor.getAttribute('href')) {
+      return navAnchor;
+    }
+
+    // Strategy 2: Page number match (+1 or relative link)
     const currentUrl = window.location.href;
-    const currentMatch = currentUrl.match(/(\d{4,6})/);
+    const currentMatch = currentUrl.match(/(\d{3,6})/);
     if (!currentMatch) return null;
 
     const currentPageNum = parseInt(currentMatch[1], 10);
@@ -137,25 +144,24 @@ function findNextPromptLink() {
       const rawHref = link.getAttribute('href');
       if (!rawHref) continue;
 
-      // Handle SVGAnimatedString or unusual non-string attributes safely
       const hrefStr = typeof rawHref === 'string' ? rawHref : String(rawHref);
-      const match = hrefStr.match(/(\d{4,6})/);
+      const match = hrefStr.match(/(\d{3,6})/);
 
       if (match) {
         const pageNum = parseInt(match[1], 10);
-        if (pageNum === currentPageNum + 1) {
+        if (pageNum > currentPageNum && pageNum <= currentPageNum + 5) {
           return link;
         }
       }
     }
   } catch (e) {
-    // Prevent DOM timing exceptions during Vue hydration
+    // Prevent timing exceptions during Vue rendering
   }
 
   return null;
 }
 
-function waitForNextPromptLink(maxRetries = 20, delay = 100) {
+function waitForNextPromptLink(maxRetries = 25, delay = 100) {
   return new Promise((resolve) => {
     let attempts = 0;
 
@@ -175,99 +181,159 @@ function waitForNextPromptLink(maxRetries = 20, delay = 100) {
   });
 }
 
-function applyUnreleasedBehavior(targetLink, behavior) {
-  if (!targetLink) return;
+function applyUnreleasedBehavior(nextAnchor, behaviorSetting) {
+  let navDiv = nextAnchor ? nextAnchor.closest('div') : null;
+  if (!navDiv) {
+    navDiv = document.querySelector('article div.text-2xl') || document.querySelector('div.text-2xl');
+  }
 
-  if (behavior === 'blur') {
-    targetLink.style.filter = 'blur(6px)';
-    targetLink.style.transition = 'filter 0.2s ease';
-    targetLink.style.pointerEvents = 'none';
-    targetLink.style.userSelect = 'none';
-  } else if (behavior === 'hide') {
-    targetLink.style.opacity = '0';
-    targetLink.style.visibility = 'hidden';
-    targetLink.style.pointerEvents = 'none';
+  if (!navDiv) return;
+
+  const arrowSpan = navDiv.querySelector('span[aria-hidden="true"]');
+  const anchorEl = nextAnchor || navDiv.querySelector('a');
+
+  switch (behaviorSetting) {
+    case 'blur':
+      navDiv.style.display = '';
+      if (arrowSpan) arrowSpan.style.display = '';
+      if (anchorEl) {
+        anchorEl.style.display = '';
+        anchorEl.style.filter = 'blur(5px)';
+        anchorEl.style.pointerEvents = 'none';
+        anchorEl.style.userSelect = 'none';
+        anchorEl.setAttribute('tabindex', '-1');
+      }
+      break;
+
+    case 'hide':
+      // "Hide Prompt Only" -> Hides text link, keeps '>'
+      navDiv.style.display = '';
+      if (arrowSpan) arrowSpan.style.display = '';
+      if (anchorEl) anchorEl.style.display = 'none';
+      break;
+
+    case 'hide-all':
+      // "Hide All" -> Hides entire prompt wrapper
+      navDiv.style.display = 'none';
+      break;
+
+    case 'none':
+    default:
+      navDiv.style.display = '';
+      if (arrowSpan) arrowSpan.style.display = '';
+      if (anchorEl) {
+        anchorEl.style.display = '';
+        anchorEl.style.filter = '';
+      }
+      break;
   }
 }
 
 // ==========================================================================
 // 7. Main Orchestrator
 // ==========================================================================
+let isRunning = false;
+
 async function runMSPAUpdater() {
-  const ctx = getStoryContext();
-  if (!ctx) return;
+  if (isRunning) return;
+  isRunning = true;
 
-  const storage = getExtensionStorage();
-  if (!storage) return;
+  try {
+    const ctx = getStoryContext();
+    if (!ctx) return;
 
-  const storageKeys = ['mspaState', ctx.customStorageKey];
+    const storage = getExtensionStorage();
+    if (!storage) return;
 
-  const processCheck = async (result) => {
-    const state = result?.mspaState || {};
-    const settings = state.settings || { unreleasedBehavior: 'blur', passwordBehavior: 'hide' };
-    const comicState = state[ctx.storyKey] || {};
+    const storageKeys = ['mspaState', ctx.customStorageKey];
 
-    if (!comicState.startDate) return;
+    const processCheck = async (result) => {
+      const state = result?.mspaState || {};
+      const settings = state.settings || { unreleasedBehavior: 'blur', passwordBehavior: 'hide' };
+      const comicState = state[ctx.storyKey] || {};
 
-    const daysElapsed = calculateNonLeapElapsedDays(comicState.startDate);
-    const scheduleData = await loadActiveSchedule(ctx, result[ctx.customStorageKey]);
-    const maxAllowedPage = getMaxAllowedPage(scheduleData, daysElapsed);
+      if (!comicState.startDate) {
+        console.warn('MSPA Updater: No startDate configured for', ctx.storyKey);
+        return;
+      }
 
-    // Wait for Vue DOM mounting to complete
-    const nextLink = await waitForNextPromptLink();
+      const daysElapsed = calculateNonLeapElapsedDays(comicState.startDate);
+      const scheduleData = await loadActiveSchedule(ctx, result[ctx.customStorageKey]);
+      const maxAllowedPage = getMaxAllowedPage(scheduleData, daysElapsed);
 
-    // ----------------------------------------------------------------------
-    // Password Prompt Handling (Homestuck specific)
-    // ----------------------------------------------------------------------
-    if (ctx.storyKey === 'homestuck' && (settings.passwordBehavior || 'hide') === 'hide') {
-      const links = document.querySelectorAll('a[href]');
+      const nextLink = await waitForNextPromptLink();
 
-      for (const link of links) {
-        const href = link.getAttribute('href') || '';
-        const match = href.match(/(\d{4,6})/);
-
-        if (match) {
-          const targetPageNum = parseInt(match[1], 10);
-
-          if (PASSWORD_PAGES.includes(targetPageNum) && targetPageNum > maxAllowedPage) {
-            const parentDiv = link.closest('div');
-            if (parentDiv) {
-              parentDiv.style.display = 'none';
-            } else {
-              link.style.display = 'none';
+      // Password Prompt Handling
+      if (ctx.storyKey === 'homestuck' && (settings.passwordBehavior || 'hide') === 'hide') {
+        const links = document.querySelectorAll('a[href]');
+        for (const link of links) {
+          const href = link.getAttribute('href') || '';
+          const match = href.match(/(\d{3,6})/);
+          if (match) {
+            const targetPageNum = parseInt(match[1], 10);
+            if (PASSWORD_PAGES.includes(targetPageNum) && targetPageNum > maxAllowedPage) {
+              const parentDiv = link.closest('div');
+              if (parentDiv) parentDiv.style.display = 'none';
+              else link.style.display = 'none';
             }
           }
         }
       }
-    }
 
-    // ----------------------------------------------------------------------
-    // Next Prompt Link Handling
-    // ----------------------------------------------------------------------
-    if (nextLink) {
-      const match = (nextLink.getAttribute('href') || '').match(/(\d{4,6})/);
-      const nextPageNum = match ? parseInt(match[1], 10) : null;
+      // Next Prompt Link Handling
+      if (nextLink) {
+        const match = (nextLink.getAttribute('href') || '').match(/(\d{3,6})/);
+        const nextPageNum = match ? parseInt(match[1], 10) : null;
 
-      if (nextPageNum !== null && nextPageNum > maxAllowedPage) {
-        applyUnreleasedBehavior(nextLink, settings.unreleasedBehavior || 'blur');
+        if (nextPageNum !== null && nextPageNum > maxAllowedPage) {
+          applyUnreleasedBehavior(nextLink, settings.unreleasedBehavior || 'blur');
+        } else {
+          // If unlocked, show normally
+          applyUnreleasedBehavior(nextLink, 'none');
+        }
       }
-    }
-  };
+    };
 
-  if (typeof browser !== 'undefined' && browser.storage) {
-    storage.get(storageKeys).then(processCheck);
-  } else {
-    storage.get(storageKeys, processCheck);
+    if (typeof browser !== 'undefined' && browser?.storage?.local) {
+      storage.get(storageKeys).then(processCheck);
+    } else {
+      storage.get(storageKeys, processCheck);
+    }
+  } finally {
+    isRunning = false;
   }
 }
 
 // ==========================================================================
 // 8. Observer & Boot Sequence
 // ==========================================================================
-const observer = new MutationObserver(() => {
+let updateDebounceTimer = null;
+
+function triggerUpdate() {
+  if (updateDebounceTimer) clearTimeout(updateDebounceTimer);
+  updateDebounceTimer = setTimeout(() => {
+    runMSPAUpdater();
+  }, 150);
+}
+
+const observer = new MutationObserver((mutations) => {
+  // Re-trigger if URL changed OR relevant DOM nodes were added
+  let shouldUpdate = false;
+  
   if (currentHref !== location.href) {
     currentHref = location.href;
-    runMSPAUpdater();
+    shouldUpdate = true;
+  } else {
+    for (const mutation of mutations) {
+      if (mutation.addedNodes.length > 0) {
+        shouldUpdate = true;
+        break;
+      }
+    }
+  }
+
+  if (shouldUpdate) {
+    triggerUpdate();
   }
 });
 
@@ -281,4 +347,5 @@ if (document.body) {
   });
 }
 
+// Initial execution
 runMSPAUpdater();

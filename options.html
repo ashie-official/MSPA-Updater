@@ -123,10 +123,7 @@
         display: inline-block;
         transition: filter 0.15s ease, opacity 0.15s ease;
     }
-
-    .preview-blur { filter: blur(6px); }
-    .preview-hide { opacity: 0; pointer-events: none; }
-
+    
     /* ==========================================================================
        3. Game Panels & Status Bubbles
        ========================================================================== */
@@ -162,6 +159,21 @@
     .bubble-default-sched { background-color: #2d9dff; }
     .bubble-custom-sched  { background-color: #ba55d3; }
 
+    /* Homestuck Command Prompt Link */
+    .button-prompt-arrow {
+      font-family: 'Verdana', Geneva, Tahoma, sans-serif !important;
+      color: #000000;
+      font-size: 1.5rem;
+    }
+
+    .button-prompt-link {
+      font-family: 'Verdana', Geneva, Tahoma, sans-serif !important;
+      font-size: 1.5rem;
+      color: #0000FF;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
     .download-section {
         font-size: 1.25rem;
     }
@@ -171,42 +183,6 @@
         display: none !important;
     }
 
-    /* ==========================================================================
-       4. Responsive / Extension Toolbar Popup View
-       ========================================================================== */
-    @media (max-width: 700px) {
-        body {
-            width: 450px;
-            min-height: auto;
-            background-color: #efefef;
-        }
-
-        .mspa-container {
-            width: 100%;
-            max-width: 100%;
-            min-height: auto;
-            padding: 15px;
-        }
-
-        .mspa-container > .row {
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .col-md-6 {
-            width: 100%;
-            padding: 0 !important;
-        }
-
-        .border-end {
-            display: none !important;
-        }
-
-        .status-bubble {
-            font-size: 1rem;
-            padding: 8px 12px;
-        }
-    }
   </style>
 </head>
 <body>
@@ -235,9 +211,10 @@
           </div>
         </div>
         <select id="unreleasedBehavior" class="form-select">
-          <option value="blur" selected>Blur (default)</option>
-          <option value="hide">Hide</option>
-          <option value="show">Show always</option>
+          <option value="blur">Blur (default)</option>
+          <option value="hide">Hide prompt only</option>
+          <option value="hide-all">Hide all</option>
+          <option value="none">Show normally</option>
         </select>
       </div>
       
@@ -269,7 +246,7 @@
       <div class="col-md-6 pe-md-4 position-relative mb-5 mb-md-0">
         <div class="d-flex flex-column align-items-center justify-content-center gap-2 mb-4">
           <img src="images/story-icons/archive_hs.gif" class="comic-icon" alt="Homestuck">
-          <h2 class="h1 mb-0 fw-bold">Homestuck</h2>
+          <h2 class="h1 mb-0 fw-bold" id="hsTitle">Homestuck</h2>
         </div>
 
         <!-- Start Date Control -->
@@ -314,7 +291,7 @@
       <div class="col-md-6 ps-md-4">
         <div class="d-flex flex-column align-items-center justify-content-center gap-2 mb-4">
           <img src="images/story-icons/archive_ps.gif" class="comic-icon" alt="Problem Sleuth">
-          <h2 class="h1 mb-0 fw-bold">Problem Sleuth</h2>
+          <h2 class="h1 mb-0 fw-bold" id="psTitle">Problem Sleuth</h2>
         </div>
 
         <!-- Start Date Control -->
@@ -355,10 +332,10 @@
     </div>
 
     <!-- Footer -->
-    <div class="text-center mt-2 pt-2 border-top">
-      <label for="dateFormat" class="form-label fs-5">></label>
-      <a href="#" id="downloadSchedules" class="download-section text-primary text-decoration-underline">
-        Download current schedules.
+    <div class="w-100 text-center pt-2 mt-2 border-top">
+      <span class="button-prompt-arrow">></span>
+      <a href="#" id="downloadSchedulesBtn" class="button-prompt-link">
+        User: Download current schedules.
       </a>
     </div>
 

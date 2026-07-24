@@ -96,10 +96,7 @@
         display: inline-block;
         transition: filter 0.15s ease, opacity 0.15s ease;
     }
-
-    .preview-blur { filter: blur(6px); }
-    .preview-hide { opacity: 0; pointer-events: none; }
-
+    
     /* Compact Inline Header Avatars */
     .comic-avatar-sm {
       width: 28px;
@@ -150,13 +147,13 @@
     }
 
     /* Homestuck Command Prompt Link */
-    .prompt-arrow {
+    .button-prompt-arrow {
       font-family: 'Verdana', Geneva, Tahoma, sans-serif !important;
       color: #000000;
       font-size: 1.5rem;
     }
 
-    .settings-prompt-link {
+    .button-prompt-link {
       font-family: 'Verdana', Geneva, Tahoma, sans-serif !important;
       font-size: 1.5rem;
       color: #0000FF;
@@ -191,10 +188,11 @@
             <a href="#" id="previewLink" class="preview-link">Sample prompt.</a>
           </div>
         </div>
-        <select id="unreleasedBehavior" class="form-select form-select-sm">
-          <option value="blur" selected>Blur (default)</option>
-          <option value="hide">Hide</option>
-          <option value="show">Show always</option>
+        <select id="unreleasedBehavior" class="form-select">
+          <option value="blur">Blur (default)</option>
+          <option value="hide">Hide prompt only</option>
+          <option value="hide-all">Hide all</option>
+          <option value="none">Show normally</option>
         </select>
       </div>
       
@@ -216,7 +214,7 @@
         <!-- Inline Icon + Header -->
         <div class="d-flex align-items-center justify-content-center gap-2 mb-2 w-100">
           <img src="images/story-icons/archive_hs.gif" alt="Homestuck" class="comic-avatar-sm">
-          <span class="comic-title">Homestuck</span>
+          <span class="comic-title" id="hsTitle">Homestuck</span>
         </div>
         
         <!-- Bubble Stack -->
@@ -235,7 +233,7 @@
         <!-- Inline Icon + Header -->
         <div class="d-flex align-items-center justify-content-center gap-2 mb-2 w-100">
           <img src="images/story-icons/archive_ps.gif" alt="Problem Sleuth" class="comic-avatar-sm">
-          <span class="comic-title">Problem Sleuth</span>
+          <span class="comic-title" id="psTitle">Problem Sleuth</span>
         </div>
         
         <!-- Bubble Stack -->
@@ -251,9 +249,18 @@
     </div>
 
     <!-- Open Options Prompt -->
-    <div class="w-100 text-center pt-2 mt-2 border-top">
-      <span class="prompt-arrow">></span>
-      <a href="#" id="openOptionsBtn" class="settings-prompt-link">Open full settings.</a>
+    <div class="w-100 text-left pt-2 mt-2 border-top">
+      <span class="button-prompt-arrow">></span>
+      <a href="#" id="openOptionsBtn" class="button-prompt-link">
+        User: Open full settings.
+      </a>
+    </div>
+
+    <div class="w-100 text-left pt-2 mt-2 border-top">
+      <span class="button-prompt-arrow">></span>
+      <a href="#" id="openOptionsBtn" class="button-prompt-link">
+        User: Open iCal maker.
+      </a>
     </div>
 
   </div>
