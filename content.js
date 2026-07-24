@@ -65,7 +65,7 @@ function getStoryContext() {
   if (url.includes('problemsleuth')) {
     return {
       storyKey: 'problemSleuth',
-      defaultSchedulePath: '/files/schedulesproblemsleuth-default.json',
+      defaultSchedulePath: '/data/schedulesproblemsleuth-default.json',
       customStorageKey: 'psCustomSchedule'
     };
   }
@@ -73,7 +73,7 @@ function getStoryContext() {
   if (url.includes('homestuck.com')) {
     return {
       storyKey: 'homestuck',
-      defaultSchedulePath: '/files/scheduleshomestuck-default.json',
+      defaultSchedulePath: '/data/scheduleshomestuck-default.json',
       customStorageKey: 'hsCustomSchedule'
     };
   }

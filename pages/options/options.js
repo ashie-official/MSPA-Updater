@@ -170,7 +170,7 @@ async function updateUI() {
       titleText: 'Homestuck', 
       baseUrl: 'https://www.homestuck.com/',
       minPage: 1901,
-      defaultPath: '/files/scheduleshomestuck-default.json'
+      defaultPath: '/data/scheduleshomestuck-default.json'
     },
     { 
       prefix: 'ps', 
@@ -178,7 +178,7 @@ async function updateUI() {
       titleText: 'Problem Sleuth', 
       baseUrl: 'https://www.homestuck.com/problemsleuth/',
       minPage: 219,
-      defaultPath: '/files/schedulesproblemsleuth-default.json'
+      defaultPath: '/data/schedulesproblemsleuth-default.json'
     }
   ];
 
@@ -448,14 +448,14 @@ async function downloadActiveSchedule(story) {
     case 'homestuck':
        task = {
         key: 'homestuck',
-        defaultPath: '/files/scheduleshomestuck-default.json',
+        defaultPath: '/data/scheduleshomestuck-default.json',
         fallbackName: 'homestuck-custom.json'
       };
       break;
     case 'problemSleuth':
        task = {
         key: 'problemSleuth',
-        defaultPath: '/files/schedulesproblemsleuth-default.json',
+        defaultPath: '/data/schedulesproblemsleuth-default.json',
         fallbackName: 'problemsleuth-custom.json'
       };
       break;
