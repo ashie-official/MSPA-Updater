@@ -387,4 +387,13 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+  const promptICalMaker = document.getElementById('promptICalMaker');
+  if (promptICalMaker) {
+    promptICalMaker.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.open('/pages/ical-maker/ical-maker.html');
+    });
+  }
+
 });
